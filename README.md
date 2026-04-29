@@ -1,12 +1,12 @@
 # Discord Win-Challenge Bot
 
-Diese Anleitung fuehrt dich komplett durch die Installation. Du musst kein Programmierer sein. Folge einfach der Reihenfolge.
+Diese Anleitung führt dich komplett durch die Installation. Du musst kein Programmierer sein. Folge einfach der Reihenfolge.
 
 Der Bot macht Win-Challenges in Discord:
 
 - Teams erstellen
 - Aufgaben/Spiele eintragen
-- Aufgaben waehrend der Challenge abhaken
+- Aufgaben während der Challenge abhaken
 - Zeiten automatisch mitschreiben
 - Am Ende eine Siegerehrung posten
 
@@ -14,13 +14,13 @@ Der Bot macht Win-Challenges in Discord:
 
 Ein Discord-Bot besteht aus zwei Teilen:
 
-1. **Discord-Seite:** Du erstellst im Discord Developer Portal eine Bot-App und laedst sie auf deinen Server ein.
+1. **Discord-Seite:** Du erstellst im Discord Developer Portal eine Bot-App und lädst sie auf deinen Server ein.
 2. **Laufender Bot-Prozess:** Irgendwo muss das Bot-Programm laufen, z.B. auf deinem PC oder besser auf deinem Raspberry Pi.
 
 Wichtig:
 
-- Deine Mitspieler muessen nichts installieren.
-- Der Bot laeuft nur, solange das Geraet an ist, auf dem du ihn startest.
+- Deine Mitspieler müssen nichts installieren.
+- Der Bot läuft nur, solange das Gerät an ist, auf dem du ihn startest.
 - Wenn dein PC aus ist, ist der Bot aus.
 - Wenn dein Raspberry Pi an ist, kann der Bot 24/7 laufen.
 
@@ -49,7 +49,7 @@ Mache das nicht:
 Wenn du eine Datei `Token.txt` benutzt hast, ist das lokal okay. Besser ist aber:
 
 1. Token in die `.env` kopieren.
-2. `Token.txt` danach loeschen.
+2. `Token.txt` danach löschen.
 
 Der Bot braucht nur die `.env`.
 
@@ -62,7 +62,7 @@ Du brauchst:
 - Dieses Projekt auf deinem PC oder Raspberry Pi
 - Node.js Version 20 oder neuer
 
-Node.js pruefen:
+Node.js prüfen:
 
 ```powershell
 node --version
@@ -74,9 +74,9 @@ Auf Windows bitte meistens `npm.cmd` verwenden, nicht nur `npm`.
 
 ## Teil A: Bot in Discord erstellen
 
-### 1. Developer Portal oeffnen
+### 1. Developer Portal öffnen
 
-Oeffne diese Seite:
+Öffne diese Seite:
 
 ```text
 https://discord.com/developers/applications
@@ -91,7 +91,7 @@ https://discord.com/developers/applications
     Win Challenge Bot
     ```
 
-3. Bestaetige.
+3. Bestätige.
 
 ### 3. Bot erstellen
 
@@ -106,7 +106,7 @@ https://discord.com/developers/applications
 3. Kopiere den Token.
 4. Speichere ihn erstmal nur lokal.
 
-Dieser Wert kommt spaeter in die `.env`:
+Dieser Wert kommt später in die `.env`:
 
 ```env
 DISCORD_TOKEN=hier_kommt_dein_token_rein
@@ -125,7 +125,7 @@ Du brauchst zwei IDs:
 2. Suche `Application ID`.
 3. Kopiere diese Zahl.
 
-Diese Zahl kommt spaeter in die `.env`:
+Diese Zahl kommt später in die `.env`:
 
 ```env
 CLIENT_ID=hier_kommt_deine_application_id_rein
@@ -137,15 +137,15 @@ CLIENT_ID=hier_kommt_deine_application_id_rein
 
 Falls du `Server-ID kopieren` nicht siehst:
 
-1. Discord oeffnen.
+1. Discord öffnen.
 2. Unten links auf das Zahnrad.
 3. Links auf `Entwickler`.
 4. `Entwicklermodus` aktivieren.
-5. Einstellungen schliessen.
+5. Einstellungen schließen.
 6. Rechtsklick auf dein Server-Icon links in der Server-Leiste.
 7. `Server-ID kopieren`.
 
-Diese Zahl kommt spaeter in die `.env`:
+Diese Zahl kommt später in die `.env`:
 
 ```env
 GUILD_ID=hier_kommt_deine_server_id_rein
@@ -153,14 +153,14 @@ GUILD_ID=hier_kommt_deine_server_id_rein
 
 ## Teil C: Bot auf deinen Discord-Server einladen
 
-### 1. OAuth2 URL Generator oeffnen
+### 1. OAuth2 URL Generator öffnen
 
 Im Developer Portal:
 
 1. Links auf `OAuth2`.
 2. Dann auf `URL Generator`.
 
-### 2. Scopes auswaehlen
+### 2. Scopes auswählen
 
 Bei `Scopes` nur diese beiden ankreuzen:
 
@@ -171,7 +171,7 @@ applications.commands
 
 Keine anderen Scopes ankreuzen.
 
-### 3. Bot Permissions auswaehlen
+### 3. Bot Permissions auswählen
 
 Bei `Bot Permissions` diese Rechte ankreuzen:
 
@@ -182,7 +182,7 @@ Read Message History
 Use Slash Commands
 ```
 
-Auf Deutsch koennen die so heissen:
+Auf Deutsch können die so heißen:
 
 ```text
 Nachrichten senden
@@ -196,26 +196,26 @@ Slash-Befehle verwenden
 Unten wird eine lange URL generiert.
 
 1. URL kopieren.
-2. Im Browser oeffnen.
-3. Deinen Server auswaehlen.
+2. Im Browser öffnen.
+3. Deinen Server auswählen.
 4. Bot autorisieren.
 
 ### Wenn Discord eine Weiterleitungs-URI verlangt
 
 Dann ist meistens eine Bot-Einstellung falsch.
 
-Pruefe:
+Prüfe:
 
 1. Links auf `Bot`.
 2. Suche `Requires OAuth2 Code Grant`.
 3. Diese Option muss ausgeschaltet sein.
 4. Danach wieder zu `OAuth2` -> `URL Generator`.
 
-Du brauchst fuer diesen Bot keine Weiterleitungs-URI.
+Du brauchst für diesen Bot keine Weiterleitungs-URI.
 
 ## Teil D: `.env` Datei erstellen
 
-Im Projektordner muss eine Datei genau so heissen:
+Im Projektordner muss eine Datei genau so heißen:
 
 ```text
 .env
@@ -250,16 +250,16 @@ GUILD_ID=987654321098765432
 
 Wichtig:
 
-- Keine Anfuehrungszeichen.
+- Keine Anführungszeichen.
 - Keine Leerzeichen vor oder nach `=`.
 - Jede Zeile genau einmal.
 - Token nicht in Klammern setzen.
 
 ## Teil E: Bot auf Windows testen
 
-Oeffne PowerShell im Projektordner.
+Öffne PowerShell im Projektordner.
 
-Der Projektordner ist bei dir ungefaehr:
+Der Projektordner ist bei dir ungefähr:
 
 ```text
 c:\Users\pierr\Documents\Pierre\Privat\Pierre\Discord
@@ -279,7 +279,7 @@ Das muss nur beim ersten Mal gemacht werden.
 npm.cmd run register
 ```
 
-Wenn alles gut ist, steht dort ungefaehr:
+Wenn alles gut ist, steht dort ungefähr:
 
 ```text
 Registered 3 guild commands for ...
@@ -299,7 +299,7 @@ Logged in as ...
 
 Jetzt ist der Bot online.
 
-Wichtig: Wenn du PowerShell schliesst, stoppt der Bot. Fuer 24/7 nimm den Raspberry Pi.
+Wichtig: Wenn du PowerShell schließt, stoppt der Bot. Für 24/7 nimm den Raspberry Pi.
 
 ## Teil F: Bot in Discord benutzen
 
@@ -323,7 +323,7 @@ Klicke auf:
 Neue Challenge
 ```
 
-Dann fuehrt dich der Bot mit Popups durch das Setup. Discord nennt diese Popups auch `Modals`.
+Dann führt dich der Bot mit Popups durch das Setup. Discord nennt diese Popups auch `Modals`.
 
 ### 3. Setup-Schritte
 
@@ -334,11 +334,11 @@ Der Bot fragt nacheinander:
 3. Welche User sind in Team 2?
 4. Ob Gegnerdetails sichtbar sein sollen.
 5. Welche Aufgaben es gibt.
-6. Ob Zeit nur gezaehlt wird oder ein Zeitlimit gilt.
+6. Ob Zeit nur gezählt wird oder ein Zeitlimit gilt.
 
-Diese Abfragen erscheinen als Popups. Bei Team-Usern kannst du Discord-User direkt im Popup auswaehlen.
+Diese Abfragen erscheinen als Popups. Bei Team-Usern kannst du Discord-User direkt im Popup auswählen.
 
-### 4. Aufgaben hinzufuegen
+### 4. Aufgaben hinzufügen
 
 Du musst keine Syntax mehr lernen.
 
@@ -355,7 +355,7 @@ Checkbox aktiv = b2b
 Checkbox aus = kein b2b
 ```
 
-### 5. Aufgabe waehrend der Challenge abhaken
+### 5. Aufgabe während der Challenge abhaken
 
 Jeder Spieler klickt:
 
@@ -379,11 +379,11 @@ Wenn ein Team alle Aufgaben erledigt hat:
 - Mehrheit entscheidet
 - Danach wird eine Siegerehrung gepostet
 
-Nach dem Ende loescht der Bot die Fortschritts- und Abstimmungsnachrichten dieser Challenge.
+Nach dem Ende löscht der Bot die Fortschritts- und Abstimmungsnachrichten dieser Challenge.
 
 Es bleibt nur die Siegerehrung sichtbar.
 
-Alte Siegerehrungen anderer Challenges werden nicht geloescht.
+Alte Siegerehrungen anderer Challenges werden nicht gelöscht.
 
 ## Teil G: Raspberry Pi 24/7 Betrieb
 
@@ -460,15 +460,15 @@ Die Service-Datei im Projekt heisst:
 deploy/win-challenge-bot.service
 ```
 
-### 1. Service-Datei pruefen
+### 1. Service-Datei prüfen
 
-Oeffne:
+Öffne:
 
 ```text
 deploy/win-challenge-bot.service
 ```
 
-Pruefe diese Zeilen:
+Prüfe diese Zeilen:
 
 ```ini
 WorkingDirectory=/home/pi/discord-win-challenge-bot
@@ -503,7 +503,7 @@ sudo systemctl enable win-challenge-bot
 sudo systemctl start win-challenge-bot
 ```
 
-### 5. Status pruefen
+### 5. Status prüfen
 
 ```bash
 sudo systemctl status win-challenge-bot
@@ -529,7 +529,7 @@ STRG + C
 
 ### 7. Bot neu starten
 
-Nach Code-Aenderungen:
+Nach Code-Änderungen:
 
 ```bash
 sudo systemctl restart win-challenge-bot
@@ -549,19 +549,19 @@ Laufende Challenges stehen hier:
 data/challenges.json
 ```
 
-Diese Datei ist nur temporaer.
+Diese Datei ist nur temporär.
 
 Wenn eine Challenge abgeschlossen ist:
 
 - Siegerehrung bleibt in Discord
-- Challenge-Daten werden aus `data/challenges.json` geloescht
+- Challenge-Daten werden aus `data/challenges.json` gelöscht
 
-Wenn der Bot waehrend einer laufenden Challenge neu startet:
+Wenn der Bot während einer laufenden Challenge neu startet:
 
 - Bot liest `data/challenges.json`
 - laufende Challenge kann weitergehen
 
-## Tests ausfuehren
+## Tests ausführen
 
 Auf Windows:
 
@@ -581,7 +581,7 @@ Wenn alles gut ist, steht am Ende:
 pass
 ```
 
-## Haeufige Probleme
+## Häufige Probleme
 
 ### `npm` funktioniert in PowerShell nicht
 
@@ -594,14 +594,14 @@ npm.cmd start
 
 ### Bot ist offline
 
-Pruefe:
+Prüfe:
 
 - Ist `npm.cmd start` noch offen?
-- Oder laeuft auf dem Pi der Service?
-- Hat das Geraet Internet?
+- Oder läuft auf dem Pi der Service?
+- Hat das Gerät Internet?
 - Ist der Token in `.env` richtig?
 
-Pi pruefen:
+Pi prüfen:
 
 ```bash
 sudo systemctl status win-challenge-bot
@@ -609,7 +609,7 @@ sudo systemctl status win-challenge-bot
 
 ### Slash Commands erscheinen nicht
 
-Pruefe:
+Prüfe:
 
 - `CLIENT_ID` richtig?
 - `GUILD_ID` richtig?
@@ -629,7 +629,7 @@ npm run register
 
 ### Bot kann nicht schreiben
 
-Pruefe im Discord-Kanal die Rechte des Bots:
+Prüfe im Discord-Kanal die Rechte des Bots:
 
 - Nachrichten senden
 - Links einbetten
@@ -638,32 +638,32 @@ Pruefe im Discord-Kanal die Rechte des Bots:
 
 ### Invite-Link will eine Weiterleitungs-URI
 
-Pruefe im Developer Portal:
+Prüfe im Developer Portal:
 
 1. Links auf `Bot`.
 2. `Requires OAuth2 Code Grant` ausschalten.
-3. Zurueck zu `OAuth2` -> `URL Generator`.
-4. Nur `bot` und `applications.commands` auswaehlen.
+3. Zurück zu `OAuth2` -> `URL Generator`.
+4. Nur `bot` und `applications.commands` auswählen.
 
 ### `.env` wird nicht erkannt
 
-Pruefe:
+Prüfe:
 
 - Datei heisst wirklich `.env`
 - Datei liegt neben `package.json`
 - Datei ist nicht `.env.txt`
-- Inhalt hat keine Anfuehrungszeichen
+- Inhalt hat keine Anführungszeichen
 - Keine Leerzeichen um `=`
 
 ### Bot startet, aber `/setup` geht nicht
 
-Pruefe:
+Prüfe:
 
-1. Wurde `npm.cmd run register` ausgefuehrt?
+1. Wurde `npm.cmd run register` ausgeführt?
 2. Ist `GUILD_ID` die richtige Server-ID?
 3. Wurde der Bot auf genau diesen Server eingeladen?
 
-## Normale Reihenfolge fuer Windows
+## Normale Reihenfolge für Windows
 
 Wenn du alles einmal eingerichtet hast, brauchst du meistens nur:
 
@@ -671,7 +671,7 @@ Wenn du alles einmal eingerichtet hast, brauchst du meistens nur:
 npm.cmd start
 ```
 
-Beim ersten Setup oder nach Command-Aenderungen:
+Beim ersten Setup oder nach Command-Änderungen:
 
 ```powershell
 npm.cmd install
@@ -679,7 +679,7 @@ npm.cmd run register
 npm.cmd start
 ```
 
-## Normale Reihenfolge fuer Raspberry Pi
+## Normale Reihenfolge für Raspberry Pi
 
 Einmalig:
 

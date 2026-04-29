@@ -87,7 +87,7 @@ async function handleCommand(interaction) {
   if (interaction.commandName === 'challenge_status') {
     const state = store.getActiveChallengeByChannelId(interaction.channelId);
     if (!state) {
-      await interaction.reply({ content: 'In diesem Kanal laeuft gerade keine Challenge.', ephemeral: true });
+      await interaction.reply({ content: 'In diesem Kanal läuft gerade keine Challenge.', ephemeral: true });
       return;
     }
 
@@ -104,7 +104,7 @@ async function handleCommand(interaction) {
   if (interaction.commandName === 'challenge_cancel') {
     const state = store.getActiveChallengeByChannelId(interaction.channelId);
     if (!state) {
-      await interaction.reply({ content: 'In diesem Kanal laeuft gerade keine Challenge.', ephemeral: true });
+      await interaction.reply({ content: 'In diesem Kanal läuft gerade keine Challenge.', ephemeral: true });
       return;
     }
 
@@ -122,7 +122,7 @@ async function handleButton(interaction) {
   if (action === 'new') {
     const existing = store.getActiveChallengeByChannelId(interaction.channelId);
     if (existing) {
-      await interaction.reply({ content: 'In diesem Kanal laeuft bereits eine Challenge.', ephemeral: true });
+      await interaction.reply({ content: 'In diesem Kanal läuft bereits eine Challenge.', ephemeral: true });
       return;
     }
     await interaction.showModal(buildTeamCountModal());
@@ -246,7 +246,7 @@ async function handleStringSelect(interaction) {
 
     const team = findTeamForUser(state, interaction.user.id);
     if (!team || team.id !== teamId) {
-      await interaction.reply({ content: 'Du kannst nur Aufgaben fuer dein eigenes Team abhaken.', ephemeral: true });
+      await interaction.reply({ content: 'Du kannst nur Aufgaben für dein eigenes Team abhaken.', ephemeral: true });
       return;
     }
 
@@ -363,7 +363,7 @@ async function handleVoteButton(interaction, messageId, choice) {
 
   await message.edit(buildChallengeMessage(state));
   store.saveChallenge(state);
-  await interaction.reply({ content: `Stimme gezaehlt. Aktuell: ${result.endVotes} Beenden / ${result.continueVotes} Weiterspielen`, ephemeral: true });
+  await interaction.reply({ content: `Stimme gezählt. Aktuell: ${result.endVotes} Beenden / ${result.continueVotes} Weiterspielen`, ephemeral: true });
 }
 
 async function startChallengeFromSession(session, timing) {
@@ -508,7 +508,7 @@ async function fetchStoredMessage(state) {
 function buildTaskModal(sessionId) {
   const modal = new ModalBuilder()
     .setCustomId(`wc:setup:task:${sessionId}`)
-    .setTitle('Aufgabe hinzufuegen');
+    .setTitle('Aufgabe hinzufügen');
 
   modal.addLabelComponents(
     new LabelBuilder()
@@ -554,7 +554,7 @@ function buildTeamCountModal() {
         .setStringSelectMenuComponent(
           new StringSelectMenuBuilder()
             .setCustomId('team_count')
-            .setPlaceholder('Teamanzahl waehlen')
+            .setPlaceholder('Teamanzahl wählen')
             .addOptions([1, 2, 3, 4].map((count) => ({
               label: `${count} Team${count === 1 ? '' : 's'}`,
               value: String(count)
@@ -569,11 +569,11 @@ function buildTeamUsersModal(sessionId, teamIndex, teamCount) {
     .setTitle(`Team ${teamIndex + 1}/${teamCount}`)
     .addLabelComponents(
       new LabelBuilder()
-        .setLabel(`User fuer Team ${teamIndex + 1}`)
+        .setLabel(`User für Team ${teamIndex + 1}`)
         .setUserSelectMenuComponent(
           new UserSelectMenuBuilder()
             .setCustomId('team_users')
-            .setPlaceholder('Discord-User auswaehlen')
+            .setPlaceholder('Discord-User auswählen')
             .setMinValues(1)
             .setMaxValues(25)
         )
@@ -586,11 +586,11 @@ function buildVisibilityModal(sessionId) {
     .setTitle('Sichtbarkeit')
     .addLabelComponents(
       new LabelBuilder()
-        .setLabel('Was duerfen Teams sehen?')
+        .setLabel('Was dürfen Teams sehen?')
         .setStringSelectMenuComponent(
           new StringSelectMenuBuilder()
             .setCustomId('visibility')
-            .setPlaceholder('Sichtbarkeit waehlen')
+            .setPlaceholder('Sichtbarkeit wählen')
             .addOptions(
               { label: 'Alle sehen alles', value: 'all' },
               { label: 'Nur eigenes Team', value: 'own' }
@@ -610,15 +610,15 @@ function buildTimingModal(sessionId) {
       .setStringSelectMenuComponent(
         new StringSelectMenuBuilder()
           .setCustomId('timing_mode')
-          .setPlaceholder('Zeitmodus waehlen')
+          .setPlaceholder('Zeitmodus wählen')
           .addOptions(
-            { label: 'Zeit zaehlen', value: 'stopwatch' },
+            { label: 'Zeit zählen', value: 'stopwatch' },
             { label: 'Zeitlimit', value: 'limit' }
           )
       ),
     new LabelBuilder()
       .setLabel('Zeitlimit in Minuten')
-      .setDescription('Nur ausfuellen, wenn du Zeitlimit waehlst.')
+      .setDescription('Nur ausfüllen, wenn du Zeitlimit wählst.')
       .setTextInputComponent(
         new TextInputBuilder()
         .setCustomId('minutes')
@@ -635,7 +635,7 @@ function requireCreatorOrAdmin(interaction, state) {
   const isCreator = interaction.user.id === state.creatorId;
   const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild);
   if (!isCreator && !isAdmin) {
-    throw new Error('Nur der Ersteller oder Server-Admins duerfen die Challenge beenden.');
+    throw new Error('Nur der Ersteller oder Server-Admins dürfen die Challenge beenden.');
   }
 }
 
