@@ -240,6 +240,11 @@ async function handleSetupButton(interaction) {
       await interaction.update(withoutEphemeral(buildTaskReviewPrompt(sessionId, session.tasks)));
       return;
     }
+
+    if (value === 'timing') {
+      await interaction.showModal(buildTimingModal(sessionId));
+      return;
+    }
   }
 
   const realSessionId = step === 'task' ? sessionId : value;
@@ -261,7 +266,7 @@ async function handleSetupButton(interaction) {
       if (session.tasks.length === 0) {
         throw new Error('Bitte mindestens eine Aufgabe anlegen.');
       }
-      await interaction.showModal(buildTimingModal(realSessionId));
+      await interaction.update(withoutEphemeral(buildNextModalPrompt(realSessionId, 'timing', 'Zeit einstellen')));
       return;
     }
   }
