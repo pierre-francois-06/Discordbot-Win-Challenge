@@ -1,88 +1,418 @@
 # Discord Win-Challenge Bot
 
-Dieser Bot dokumentiert Win-Challenges in einem Discord-Textkanal. Er erstellt Teams, Aufgaben, einen laufenden Status und am Ende eine Siegerehrung.
+Diese Anleitung fuehrt dich komplett durch die Installation. Du musst kein Programmierer sein. Folge einfach der Reihenfolge.
 
-## Kurz erklärt
+Der Bot macht Win-Challenges in Discord:
 
-**Müssen alle Mitspieler etwas installieren?**  
-Nein. Nur eine Person lädt den Bot einmal auf den Discord-Server ein. Alle anderen benutzen ihn direkt in Discord.
+- Teams erstellen
+- Aufgaben/Spiele eintragen
+- Aufgaben waehrend der Challenge abhaken
+- Zeiten automatisch mitschreiben
+- Am Ende eine Siegerehrung posten
 
-**Muss PowerShell immer offen bleiben?**  
-Nur wenn du den Bot auf deinem Windows-PC laufen lässt. Besser: Du lässt ihn auf deinem Raspberry Pi laufen. Dann bleibt der Bot online, solange der Pi eingeschaltet ist und Internet hat.
+## Ganz kurz: Wie funktioniert das?
 
-**Speichert der Bot Daten?**  
-Nur temporär während eine Challenge läuft. Der Bot speichert laufende Challenges in `data/challenges.json`. Sobald die Challenge beendet ist und die Siegerehrung gepostet wurde, wird diese Challenge wieder aus der Datei gelöscht.
+Ein Discord-Bot besteht aus zwei Teilen:
 
-**Warum steht kein `WC_STATE...` mehr im Chat?**  
-Der Challenge-Stand wird nicht mehr in Discord-Nachrichten versteckt, sondern temporär lokal in der JSON-Datei gespeichert.
+1. **Discord-Seite:** Du erstellst im Discord Developer Portal eine Bot-App und laedst sie auf deinen Server ein.
+2. **Laufender Bot-Prozess:** Irgendwo muss das Bot-Programm laufen, z.B. auf deinem PC oder besser auf deinem Raspberry Pi.
 
-## Was du brauchst
+Wichtig:
 
-- Node.js Version 20 oder neuer
+- Deine Mitspieler muessen nichts installieren.
+- Der Bot laeuft nur, solange das Geraet an ist, auf dem du ihn startest.
+- Wenn dein PC aus ist, ist der Bot aus.
+- Wenn dein Raspberry Pi an ist, kann der Bot 24/7 laufen.
+
+## Was ist was?
+
+| Begriff | Bedeutung |
+| --- | --- |
+| `DISCORD_TOKEN` | Das geheime Passwort deines Bots. Niemals teilen. |
+| `CLIENT_ID` | Die Application ID deiner Discord-App. |
+| `GUILD_ID` | Die Server-ID deines Discord-Servers. |
+| `.env` | Lokale Datei, in der Token und IDs stehen. |
+| Slash Command | Ein Discord-Befehl wie `/setup`. |
+| Raspberry Pi Service | Startet den Bot automatisch im Hintergrund. |
+
+## Sehr wichtig: Token geheim halten
+
+Der Bot-Token ist wie ein Passwort.
+
+Mache das nicht:
+
+- Token in Discord posten
+- Token hier in den Chat posten
+- Token auf GitHub hochladen
+- Token in Screenshots zeigen
+
+Wenn du eine Datei `Token.txt` benutzt hast, ist das lokal okay. Besser ist aber:
+
+1. Token in die `.env` kopieren.
+2. `Token.txt` danach loeschen.
+
+Der Bot braucht nur die `.env`.
+
+## Voraussetzungen
+
+Du brauchst:
+
+- Einen Discord-Account
 - Einen Discord-Server, auf dem du Bots einladen darfst
-- Eine Discord Developer Application mit Bot-Token
-- Dieses Projekt auf dem Gerät, auf dem der Bot laufen soll
+- Dieses Projekt auf deinem PC oder Raspberry Pi
+- Node.js Version 20 oder neuer
 
-Prüfe Node.js:
+Node.js pruefen:
 
 ```powershell
 node --version
 ```
 
-Auf Windows nutze am besten immer `npm.cmd` statt `npm`.
+Wenn dort z.B. `v22.16.0` steht, ist alles gut.
 
-## 1. Discord Bot erstellen
+Auf Windows bitte meistens `npm.cmd` verwenden, nicht nur `npm`.
 
-1. Öffne <https://discord.com/developers/applications>
-2. Klicke auf `New Application`.
-3. Gib der App einen Namen, z.B. `Win Challenge Bot`.
-4. Öffne links `Bot`.
-5. Klicke auf `Add Bot`, falls noch kein Bot existiert.
-6. Kopiere den Bot-Token.
-7. Behalte den Token geheim.
+## Teil A: Bot in Discord erstellen
 
-## 2. IDs kopieren
+### 1. Developer Portal oeffnen
 
-Du brauchst:
+Oeffne diese Seite:
 
-- `DISCORD_TOKEN`: Bot-Token aus dem Bereich `Bot`
-- `CLIENT_ID`: Application ID aus `General Information`
-- `GUILD_ID`: Server-ID deines Discord-Servers
+```text
+https://discord.com/developers/applications
+```
 
-So findest du die Server-ID:
+### 2. Neue App erstellen
 
-1. Discord öffnen.
-2. Benutzereinstellungen öffnen.
-3. Unter `Entwickler` den Entwicklermodus aktivieren.
-4. Rechtsklick auf dein Server-Icon.
-5. `Server-ID kopieren`.
+1. Klicke auf `New Application`.
+2. Gib einen Namen ein, z.B.:
 
-## 3. Bot auf den Server einladen
+   ```text
+   Win Challenge Bot
+   ```
+
+3. Bestaetige.
+
+### 3. Bot erstellen
+
+1. Klicke links auf `Bot`.
+2. Falls dort `Add Bot` steht, klicke darauf.
+3. Falls schon ein Bot existiert, ist das auch okay.
+
+### 4. Bot-Token kopieren
+
+1. Im Bereich `Bot` suchst du `Token`.
+2. Klicke auf `Reset Token` oder `Copy`.
+3. Kopiere den Token.
+4. Speichere ihn erstmal nur lokal.
+
+Dieser Wert kommt spaeter in die `.env`:
+
+```env
+DISCORD_TOKEN=hier_kommt_dein_token_rein
+```
+
+## Teil B: IDs finden
+
+Du brauchst zwei IDs:
+
+- `CLIENT_ID`
+- `GUILD_ID`
+
+### CLIENT_ID finden
+
+1. Im Developer Portal links auf `General Information`.
+2. Suche `Application ID`.
+3. Kopiere diese Zahl.
+
+Diese Zahl kommt spaeter in die `.env`:
+
+```env
+CLIENT_ID=hier_kommt_deine_application_id_rein
+```
+
+### GUILD_ID finden
+
+`GUILD_ID` bedeutet: die ID deines Discord-Servers.
+
+Falls du `Server-ID kopieren` nicht siehst:
+
+1. Discord oeffnen.
+2. Unten links auf das Zahnrad.
+3. Links auf `Entwickler`.
+4. `Entwicklermodus` aktivieren.
+5. Einstellungen schliessen.
+6. Rechtsklick auf dein Server-Icon links in der Server-Leiste.
+7. `Server-ID kopieren`.
+
+Diese Zahl kommt spaeter in die `.env`:
+
+```env
+GUILD_ID=hier_kommt_deine_server_id_rein
+```
+
+## Teil C: Bot auf deinen Discord-Server einladen
+
+### 1. OAuth2 URL Generator oeffnen
 
 Im Developer Portal:
 
-1. Links auf `OAuth2` -> `URL Generator`.
-2. Bei `Scopes` auswählen:
-   - `bot`
-   - `applications.commands`
-3. Bei `Bot Permissions` auswählen:
-   - `Send Messages`
-   - `Embed Links`
-   - `Read Message History`
-   - `Use Slash Commands`
-4. Generierte URL öffnen und Bot auf deinen Server einladen.
+1. Links auf `OAuth2`.
+2. Dann auf `URL Generator`.
 
-Wenn Discord eine Weiterleitungs-URI verlangt, prüfe im Bereich `Bot`, ob `Requires OAuth2 Code Grant` ausgeschaltet ist.
+### 2. Scopes auswaehlen
 
-## 4. Projekt einrichten
+Bei `Scopes` nur diese beiden ankreuzen:
 
-Pakete installieren:
+```text
+bot
+applications.commands
+```
+
+Keine anderen Scopes ankreuzen.
+
+### 3. Bot Permissions auswaehlen
+
+Bei `Bot Permissions` diese Rechte ankreuzen:
+
+```text
+Send Messages
+Embed Links
+Read Message History
+Use Slash Commands
+```
+
+Auf Deutsch koennen die so heissen:
+
+```text
+Nachrichten senden
+Links einbetten
+Nachrichtenverlauf anzeigen
+Slash-Befehle verwenden
+```
+
+### 4. Invite-Link benutzen
+
+Unten wird eine lange URL generiert.
+
+1. URL kopieren.
+2. Im Browser oeffnen.
+3. Deinen Server auswaehlen.
+4. Bot autorisieren.
+
+### Wenn Discord eine Weiterleitungs-URI verlangt
+
+Dann ist meistens eine Bot-Einstellung falsch.
+
+Pruefe:
+
+1. Links auf `Bot`.
+2. Suche `Requires OAuth2 Code Grant`.
+3. Diese Option muss ausgeschaltet sein.
+4. Danach wieder zu `OAuth2` -> `URL Generator`.
+
+Du brauchst fuer diesen Bot keine Weiterleitungs-URI.
+
+## Teil D: `.env` Datei erstellen
+
+Im Projektordner muss eine Datei genau so heissen:
+
+```text
+.env
+```
+
+Nicht:
+
+```text
+.env.example
+.env copy.example
+.env.txt
+Token.txt
+```
+
+Die `.env` liegt direkt im Hauptordner des Projekts, also neben `README.md` und `package.json`.
+
+Inhalt der `.env`:
+
+```env
+DISCORD_TOKEN=dein_bot_token
+CLIENT_ID=deine_application_id
+GUILD_ID=deine_server_id
+```
+
+Beispiel:
+
+```env
+DISCORD_TOKEN=MTIz...
+CLIENT_ID=123456789012345678
+GUILD_ID=987654321098765432
+```
+
+Wichtig:
+
+- Keine Anfuehrungszeichen.
+- Keine Leerzeichen vor oder nach `=`.
+- Jede Zeile genau einmal.
+- Token nicht in Klammern setzen.
+
+## Teil E: Bot auf Windows testen
+
+Oeffne PowerShell im Projektordner.
+
+Der Projektordner ist bei dir ungefaehr:
+
+```text
+c:\Users\pierr\Documents\Pierre\Privat\Pierre\Discord
+```
+
+### 1. Pakete installieren
 
 ```powershell
 npm.cmd install
 ```
 
-Erstelle im Projektordner eine Datei `.env`.
+Das muss nur beim ersten Mal gemacht werden.
+
+### 2. Slash Commands registrieren
+
+```powershell
+npm.cmd run register
+```
+
+Wenn alles gut ist, steht dort ungefaehr:
+
+```text
+Registered 3 guild commands for ...
+```
+
+### 3. Bot starten
+
+```powershell
+npm.cmd start
+```
+
+Wenn alles gut ist, steht dort:
+
+```text
+Logged in as ...
+```
+
+Jetzt ist der Bot online.
+
+Wichtig: Wenn du PowerShell schliesst, stoppt der Bot. Fuer 24/7 nimm den Raspberry Pi.
+
+## Teil F: Bot in Discord benutzen
+
+### 1. Control Panel erstellen
+
+Gehe in den Textkanal, in dem die Challenge laufen soll.
+
+Schreibe:
+
+```text
+/setup
+```
+
+Der Bot postet ein Control Panel mit `Neue Challenge`.
+
+### 2. Neue Challenge starten
+
+Klicke auf:
+
+```text
+Neue Challenge
+```
+
+Dann fuehrt dich der Bot privat durch das Setup.
+
+### 3. Setup-Schritte
+
+Der Bot fragt nacheinander:
+
+1. Wie viele Teams?
+2. Welche User sind in Team 1?
+3. Welche User sind in Team 2?
+4. Ob Gegnerdetails sichtbar sein sollen.
+5. Welche Aufgaben es gibt.
+6. Ob Zeit nur gezaehlt wird oder ein Zeitlimit gilt.
+
+### 4. Aufgaben hinzufuegen
+
+Du musst keine Syntax mehr lernen.
+
+Pro Aufgabe:
+
+- Titel eintragen
+- Anzahl eintragen
+- BxB aktivieren oder nicht
+
+BxB bedeutet aktuell:
+
+```text
+Ja = b2b
+Nein = kein b2b
+```
+
+### 5. Aufgabe waehrend der Challenge abhaken
+
+Jeder Spieler klickt:
+
+```text
+Meine Aufgaben
+```
+
+Dann sieht der Spieler nur die offenen Aufgaben seines Teams.
+
+Wenn eine Aufgabe abgehaakt wurde:
+
+- Zeit wird gespeichert
+- Aufgabe verschwindet aus der Auswahl
+- Status wird aktualisiert
+
+### 6. Challenge-Ende
+
+Wenn ein Team alle Aufgaben erledigt hat:
+
+- Bot startet eine Abstimmung
+- Mehrheit entscheidet
+- Danach wird eine Siegerehrung gepostet
+
+Nach dem Ende loescht der Bot die Fortschritts- und Abstimmungsnachrichten dieser Challenge.
+
+Es bleibt nur die Siegerehrung sichtbar.
+
+Alte Siegerehrungen anderer Challenges werden nicht geloescht.
+
+## Teil G: Raspberry Pi 24/7 Betrieb
+
+Das ist die beste Variante, damit du keine PowerShell offen lassen musst.
+
+Der Raspberry Pi muss:
+
+- eingeschaltet sein
+- Internet haben
+- Node.js installiert haben
+- dieses Projekt enthalten
+
+### 1. Projekt auf den Pi kopieren
+
+Empfohlener Ordner auf dem Pi:
+
+```text
+/home/pi/discord-win-challenge-bot
+```
+
+Wenn du einen anderen User als `pi` hast, ist der Pfad entsprechend anders.
+
+### 2. Auf dem Pi in den Projektordner gehen
+
+```bash
+cd /home/pi/discord-win-challenge-bot
+```
+
+### 3. `.env` auf dem Pi erstellen
+
+Auch auf dem Pi brauchst du eine `.env`.
 
 Inhalt:
 
@@ -92,145 +422,272 @@ CLIENT_ID=deine_application_id
 GUILD_ID=deine_server_id
 ```
 
-Wichtig: Die Datei muss wirklich `.env` heißen, nicht `.env.example`, `.env.txt` oder `.env copy.example`.
-
-## 5. Slash Commands registrieren
-
-```powershell
-npm.cmd run register
-```
-
-Wenn alles klappt, erscheint ungefähr:
-
-```text
-Registered 3 guild commands for ...
-```
-
-## 6. Bot lokal starten
-
-```powershell
-npm.cmd start
-```
-
-Wenn alles klappt:
-
-```text
-Logged in as ...
-```
-
-Solange du lokal startest, muss dieses Fenster offen bleiben. Für Dauerbetrieb siehe Raspberry-Pi-Abschnitt.
-
-## 7. Bot in Discord benutzen
-
-1. Öffne den Textkanal, in dem Challenges laufen sollen.
-2. Schreibe `/setup`.
-3. Der Bot postet ein Control Panel.
-4. Klicke `Neue Challenge`.
-5. Folge dem privaten Setup:
-   - Teamanzahl wählen
-   - User für jedes Team wählen
-   - Sichtbarkeit wählen
-   - Aufgaben einzeln hinzufügen
-   - Zeitmodus wählen
-
-Aufgaben werden ohne Syntax erstellt:
-
-- Titel: Textfeld
-- Anzahl: Zahlenwert im Textfeld
-- BxB: Ja/Nein-Schritt, wobei Ja immer `b2b` bedeutet
-
-Während der Challenge klickt jeder Spieler auf `Meine Aufgaben`. Dort sieht er nur offene Aufgaben seines Teams und hakt eine Aufgabe einzeln ab.
-
-## Raspberry Pi: Bot 24/7 laufen lassen
-
-Auf dem Pi muss Node.js installiert sein. Danach kopierst du dieses Projekt auf den Pi, z.B. nach:
-
-```text
-/home/pi/discord-win-challenge-bot
-```
-
-Auf dem Pi:
+### 4. Pakete installieren
 
 ```bash
-cd /home/pi/discord-win-challenge-bot
 npm install
+```
+
+### 5. Slash Commands registrieren
+
+```bash
 npm run register
+```
+
+### 6. Testweise starten
+
+```bash
 npm start
 ```
 
-Wenn das funktioniert, kannst du den Bot als Dienst einrichten.
+Wenn dort `Logged in as ...` steht, funktioniert der Bot.
 
-### systemd Service einrichten
+Beende den Test mit:
 
-Die Beispiel-Datei liegt hier:
+```text
+STRG + C
+```
+
+## Teil H: Raspberry Pi Service einrichten
+
+Damit der Bot automatisch im Hintergrund startet, nutzt du `systemd`.
+
+Die Service-Datei im Projekt heisst:
 
 ```text
 deploy/win-challenge-bot.service
 ```
 
-Falls dein Projekt woanders liegt oder dein Pi-User nicht `pi` heißt, passe in der Datei diese Zeilen an:
+### 1. Service-Datei pruefen
+
+Oeffne:
+
+```text
+deploy/win-challenge-bot.service
+```
+
+Pruefe diese Zeilen:
 
 ```ini
 WorkingDirectory=/home/pi/discord-win-challenge-bot
 User=pi
 ```
 
-Dann auf dem Pi:
+Wenn dein Projekt woanders liegt oder dein User anders heisst, musst du diese zwei Zeilen anpassen.
+
+### 2. Service installieren
+
+Auf dem Pi im Projektordner:
 
 ```bash
+sudo cp deploy/win-challenge-bot.service /etc/systemd/system/win-challenge-bot.service
+```
+
+Dann:
+
+```bash
+sudo systemctl daemon-reload
+```
+
+### 3. Automatischen Start aktivieren
+
+```bash
+sudo systemctl enable win-challenge-bot
+```
+
+### 4. Bot starten
+
+```bash
+sudo systemctl start win-challenge-bot
+```
+
+### 5. Status pruefen
+
+```bash
+sudo systemctl status win-challenge-bot
+```
+
+Gut ist, wenn dort steht:
+
+```text
+active (running)
+```
+
+### 6. Logs ansehen
+
+```bash
+journalctl -u win-challenge-bot -f
+```
+
+Beenden mit:
+
+```text
+STRG + C
+```
+
+### 7. Bot neu starten
+
+Nach Code-Aenderungen:
+
+```bash
+sudo systemctl restart win-challenge-bot
+```
+
+### 8. Bot stoppen
+
+```bash
+sudo systemctl stop win-challenge-bot
+```
+
+## Daten und Speicherung
+
+Laufende Challenges stehen hier:
+
+```text
+data/challenges.json
+```
+
+Diese Datei ist nur temporaer.
+
+Wenn eine Challenge abgeschlossen ist:
+
+- Siegerehrung bleibt in Discord
+- Challenge-Daten werden aus `data/challenges.json` geloescht
+
+Wenn der Bot waehrend einer laufenden Challenge neu startet:
+
+- Bot liest `data/challenges.json`
+- laufende Challenge kann weitergehen
+
+## Tests ausfuehren
+
+Auf Windows:
+
+```powershell
+npm.cmd test
+```
+
+Auf Raspberry Pi/Linux:
+
+```bash
+npm test
+```
+
+Wenn alles gut ist, steht am Ende:
+
+```text
+pass
+```
+
+## Haeufige Probleme
+
+### `npm` funktioniert in PowerShell nicht
+
+Nutze:
+
+```powershell
+npm.cmd install
+npm.cmd start
+```
+
+### Bot ist offline
+
+Pruefe:
+
+- Ist `npm.cmd start` noch offen?
+- Oder laeuft auf dem Pi der Service?
+- Hat das Geraet Internet?
+- Ist der Token in `.env` richtig?
+
+Pi pruefen:
+
+```bash
+sudo systemctl status win-challenge-bot
+```
+
+### Slash Commands erscheinen nicht
+
+Pruefe:
+
+- `CLIENT_ID` richtig?
+- `GUILD_ID` richtig?
+- Bot mit `applications.commands` eingeladen?
+
+Dann nochmal:
+
+```powershell
+npm.cmd run register
+```
+
+Auf Pi:
+
+```bash
+npm run register
+```
+
+### Bot kann nicht schreiben
+
+Pruefe im Discord-Kanal die Rechte des Bots:
+
+- Nachrichten senden
+- Links einbetten
+- Nachrichtenverlauf anzeigen
+- Slash-Befehle verwenden
+
+### Invite-Link will eine Weiterleitungs-URI
+
+Pruefe im Developer Portal:
+
+1. Links auf `Bot`.
+2. `Requires OAuth2 Code Grant` ausschalten.
+3. Zurueck zu `OAuth2` -> `URL Generator`.
+4. Nur `bot` und `applications.commands` auswaehlen.
+
+### `.env` wird nicht erkannt
+
+Pruefe:
+
+- Datei heisst wirklich `.env`
+- Datei liegt neben `package.json`
+- Datei ist nicht `.env.txt`
+- Inhalt hat keine Anfuehrungszeichen
+- Keine Leerzeichen um `=`
+
+### Bot startet, aber `/setup` geht nicht
+
+Pruefe:
+
+1. Wurde `npm.cmd run register` ausgefuehrt?
+2. Ist `GUILD_ID` die richtige Server-ID?
+3. Wurde der Bot auf genau diesen Server eingeladen?
+
+## Normale Reihenfolge fuer Windows
+
+Wenn du alles einmal eingerichtet hast, brauchst du meistens nur:
+
+```powershell
+npm.cmd start
+```
+
+Beim ersten Setup oder nach Command-Aenderungen:
+
+```powershell
+npm.cmd install
+npm.cmd run register
+npm.cmd start
+```
+
+## Normale Reihenfolge fuer Raspberry Pi
+
+Einmalig:
+
+```bash
+npm install
+npm run register
 sudo cp deploy/win-challenge-bot.service /etc/systemd/system/win-challenge-bot.service
 sudo systemctl daemon-reload
 sudo systemctl enable win-challenge-bot
 sudo systemctl start win-challenge-bot
 ```
 
-Status prüfen:
-
-```bash
-sudo systemctl status win-challenge-bot
-```
-
-Logs ansehen:
-
-```bash
-journalctl -u win-challenge-bot -f
-```
-
-Bot stoppen:
-
-```bash
-sudo systemctl stop win-challenge-bot
-```
-
-Bot nach Änderungen neu starten:
-
-```bash
-sudo systemctl restart win-challenge-bot
-```
-
-## Tests
-
-```powershell
-npm.cmd test
-```
-
-## Häufige Probleme
-
-**`npm` geht in PowerShell nicht**  
-Nutze `npm.cmd`.
-
-**Slash Commands erscheinen nicht**  
-Prüfe `CLIENT_ID` und `GUILD_ID`, dann erneut:
-
-```powershell
-npm.cmd run register
-```
-
-**Bot ist offline**  
-Der Bot läuft nur, wenn der Prozess aktiv ist. Auf dem Raspberry Pi sollte der `systemd`-Service laufen.
-
-**Bot kann nicht schreiben**  
-Prüfe die Kanalrechte. Der Bot braucht Schreibrechte, Embed-Rechte und Zugriff auf den Nachrichtenverlauf.
-
-**Challenge ist nach Ende nicht mehr in `data/challenges.json`**  
-Das ist gewollt. Die Datei speichert nur laufende Challenges temporär.
+Danach laeuft der Bot automatisch im Hintergrund.
