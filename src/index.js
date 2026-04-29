@@ -1,14 +1,17 @@
 require('dotenv').config();
 
 const {
-  ActionRowBuilder,
+  CheckboxBuilder,
   Client,
   Events,
   GatewayIntentBits,
+  LabelBuilder,
   ModalBuilder,
   PermissionFlagsBits,
+  StringSelectMenuBuilder,
   TextInputBuilder,
-  TextInputStyle
+  TextInputStyle,
+  UserSelectMenuBuilder
 } = require('discord.js');
 const { createTask } = require('./tasks');
 const { parsePositiveMinutes } = require('./time');
@@ -22,16 +25,11 @@ const {
 } = require('./state');
 const { createStore } = require('./store');
 const {
-  buildB2bPrompt,
   buildChallengeMessage,
   buildMyTasksMenu,
   buildSetupPanel,
   buildSummaryMessage,
   buildTaskReviewPrompt,
-  buildTeamCountPrompt,
-  buildTeamUserPrompt,
-  buildTimingPrompt,
-  buildVisibilityPrompt,
   buildVoteMessage
 } = require('./ui');
 
@@ -127,7 +125,7 @@ async function handleButton(interaction) {
       await interaction.reply({ content: 'In diesem Kanal laeuft bereits eine Challenge.', ephemeral: true });
       return;
     }
-    await interaction.reply(buildTeamCountPrompt());
+    await interaction.showModal(buildTeamCountModal());
     return;
   }
 
@@ -201,12 +199,6 @@ async function handleSetupButton(interaction, step, arg2, arg3) {
   const value = step === 'task' ? arg2 : arg3;
   const session = getSession(sessionId, interaction.user.id);
 
-  if (step === 'visibility') {
-    session.visibility = value === 'own' ? 'own' : 'all';
-    await interaction.update(withoutEphemeral(buildTaskReviewPrompt(sessionId, session.tasks)));
-    return;
-  }
-
   if (step === 'task') {
     if (value === 'add') {
       await interaction.showModal(buildTaskModal(sessionId));
@@ -223,60 +215,19 @@ async function handleSetupButton(interaction, step, arg2, arg3) {
       if (session.tasks.length === 0) {
         throw new Error('Bitte mindestens eine Aufgabe anlegen.');
       }
-      await interaction.update(withoutEphemeral(buildTimingPrompt(sessionId)));
+      await interaction.showModal(buildTimingModal(sessionId));
       return;
     }
-  }
-
-  if (step === 'b2b') {
-    const pendingTask = session.pendingTask;
-    if (!pendingTask) {
-      throw new Error('Keine offene Aufgabe gefunden.');
-    }
-
-    session.tasks.push(createTask({
-      index: session.tasks.length,
-      title: pendingTask.title,
-      count: pendingTask.count,
-      b2b: value === 'yes'
-    }));
-    session.pendingTask = null;
-    await interaction.update(withoutEphemeral(buildTaskReviewPrompt(sessionId, session.tasks)));
-    return;
   }
 
   if (step === 'timing') {
-    if (value === 'stopwatch') {
-      await interaction.deferUpdate();
-      await startChallengeFromSession(session, { type: 'stopwatch' });
-      return;
-    }
-
-    if (value === 'limit') {
-      await interaction.showModal(buildLimitModal(sessionId));
-    }
+    await interaction.showModal(buildTimingModal(sessionId));
   }
 }
 
 async function handleStringSelect(interaction) {
   const [namespace, action] = interaction.customId.split(':');
   if (namespace !== 'wc') return;
-
-  if (action === 'setup' && interaction.customId === 'wc:setup:count') {
-    const teamCount = Number.parseInt(interaction.values[0], 10);
-    const sessionId = createSession({
-      creatorId: interaction.user.id,
-      channelId: interaction.channelId,
-      teamCount,
-      teams: [],
-      tasks: [],
-      visibility: 'all',
-      pendingTask: null
-    });
-
-    await interaction.update(withoutEphemeral(buildTeamUserPrompt(sessionId, 0, teamCount)));
-    return;
-  }
 
   if (action === 'complete') {
     const [, , messageId, teamId] = interaction.customId.split(':');
@@ -317,48 +268,70 @@ async function handleStringSelect(interaction) {
   }
 }
 
-async function handleUserSelect(interaction) {
-  const [namespace, action, step, sessionId, teamIndexRaw] = interaction.customId.split(':');
-  if (namespace !== 'wc' || action !== 'setup' || step !== 'team') return;
-
-  const session = getSession(sessionId, interaction.user.id);
-  const teamIndex = Number.parseInt(teamIndexRaw, 10);
-  session.teams[teamIndex] = { userIds: interaction.values };
-
-  const nextTeamIndex = teamIndex + 1;
-  if (nextTeamIndex < session.teamCount) {
-    await interaction.update(withoutEphemeral(buildTeamUserPrompt(sessionId, nextTeamIndex, session.teamCount)));
-    return;
-  }
-
-  await interaction.update(withoutEphemeral(buildVisibilityPrompt(sessionId)));
-}
+async function handleUserSelect() {}
 
 async function handleModal(interaction) {
   const [namespace, action, step, sessionId] = interaction.customId.split(':');
   if (namespace !== 'wc' || action !== 'setup') return;
 
-  const session = getSession(sessionId, interaction.user.id);
-
-  if (step === 'task') {
-    session.pendingTask = {
-      title: interaction.fields.getTextInputValue('title'),
-      count: interaction.fields.getTextInputValue('count')
-    };
-    createTask({
-      index: session.tasks.length,
-      title: session.pendingTask.title,
-      count: session.pendingTask.count,
-      b2b: false
+  if (step === 'count') {
+    const teamCount = Number.parseInt(interaction.fields.getStringSelectValues('team_count')[0], 10);
+    const newSessionId = createSession({
+      creatorId: interaction.user.id,
+      channelId: interaction.channelId,
+      teamCount,
+      teams: [],
+      tasks: [],
+      visibility: 'all'
     });
-    await interaction.reply(buildB2bPrompt(sessionId, session.pendingTask));
+    await interaction.showModal(buildTeamUsersModal(newSessionId, 0, teamCount));
     return;
   }
 
-  if (step === 'limit') {
-    const minutes = parsePositiveMinutes(interaction.fields.getTextInputValue('minutes'));
+  if (step === 'team') {
+    const teamIndex = Number.parseInt(sessionId, 10);
+    const realSessionId = interaction.customId.split(':')[4];
+    const teamSession = getSession(realSessionId, interaction.user.id);
+    const users = interaction.fields.getSelectedUsers('team_users', true);
+    teamSession.teams[teamIndex] = { userIds: [...users.keys()] };
+
+    const nextTeamIndex = teamIndex + 1;
+    if (nextTeamIndex < teamSession.teamCount) {
+      await interaction.showModal(buildTeamUsersModal(realSessionId, nextTeamIndex, teamSession.teamCount));
+      return;
+    }
+
+    await interaction.showModal(buildVisibilityModal(realSessionId));
+    return;
+  }
+
+  const session = getSession(sessionId, interaction.user.id);
+
+  if (step === 'visibility') {
+    session.visibility = interaction.fields.getStringSelectValues('visibility')[0];
+    await interaction.reply(buildTaskReviewPrompt(sessionId, session.tasks));
+    return;
+  }
+
+  if (step === 'task') {
+    const task = createTask({
+      index: session.tasks.length,
+      title: interaction.fields.getTextInputValue('title'),
+      count: interaction.fields.getTextInputValue('count'),
+      b2b: interaction.fields.getCheckbox('b2b')
+    });
+    session.tasks.push(task);
+    await interaction.reply(buildTaskReviewPrompt(sessionId, session.tasks));
+    return;
+  }
+
+  if (step === 'timing') {
+    const mode = interaction.fields.getStringSelectValues('timing_mode')[0];
+    const timing = mode === 'limit'
+      ? { type: 'limit', minutes: parsePositiveMinutes(interaction.fields.getTextInputValue('minutes')) }
+      : { type: 'stopwatch' };
     await interaction.reply({ content: 'Challenge wird gestartet...', ephemeral: true });
-    await startChallengeFromSession(session, { type: 'limit', minutes });
+    await startChallengeFromSession(session, timing);
   }
 }
 
@@ -504,6 +477,7 @@ async function finishChallenge(state, message, now) {
 }
 
 async function cleanupChallengeMessages(channel, state) {
+  addCleanupMessage(state, state.messageId);
   for (const messageId of state.cleanupMessageIds || []) {
     try {
       const message = await channel.messages.fetch(messageId);
@@ -536,42 +510,120 @@ function buildTaskModal(sessionId) {
     .setCustomId(`wc:setup:task:${sessionId}`)
     .setTitle('Aufgabe hinzufuegen');
 
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
+  modal.addLabelComponents(
+    new LabelBuilder()
+      .setLabel('Titel')
+      .setTextInputComponent(
+        new TextInputBuilder()
         .setCustomId('title')
-        .setLabel('Titel')
         .setStyle(TextInputStyle.Short)
         .setRequired(true)
         .setMaxLength(80)
         .setPlaceholder('z.B. Rocket League')
     ),
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
+    new LabelBuilder()
+      .setLabel('Anzahl')
+      .setTextInputComponent(
+        new TextInputBuilder()
         .setCustomId('count')
-        .setLabel('Anzahl')
         .setStyle(TextInputStyle.Short)
         .setRequired(true)
         .setMaxLength(3)
         .setPlaceholder('z.B. 3')
+      ),
+    new LabelBuilder()
+      .setLabel('BxB')
+      .setDescription('Aktiviert bedeutet b2b.')
+      .setCheckboxComponent(
+        new CheckboxBuilder()
+          .setCustomId('b2b')
+          .setDefault(false)
     )
   );
 
   return modal;
 }
 
-function buildLimitModal(sessionId) {
-  const modal = new ModalBuilder()
-    .setCustomId(`wc:setup:limit:${sessionId}`)
-    .setTitle('Zeitlimit');
+function buildTeamCountModal() {
+  return new ModalBuilder()
+    .setCustomId('wc:setup:count:new')
+    .setTitle('Teamanzahl')
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel('Wie viele Teams?')
+        .setStringSelectMenuComponent(
+          new StringSelectMenuBuilder()
+            .setCustomId('team_count')
+            .setPlaceholder('Teamanzahl waehlen')
+            .addOptions([1, 2, 3, 4].map((count) => ({
+              label: `${count} Team${count === 1 ? '' : 's'}`,
+              value: String(count)
+            })))
+        )
+    );
+}
 
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
+function buildTeamUsersModal(sessionId, teamIndex, teamCount) {
+  return new ModalBuilder()
+    .setCustomId(`wc:setup:team:${teamIndex}:${sessionId}`)
+    .setTitle(`Team ${teamIndex + 1}/${teamCount}`)
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel(`User fuer Team ${teamIndex + 1}`)
+        .setUserSelectMenuComponent(
+          new UserSelectMenuBuilder()
+            .setCustomId('team_users')
+            .setPlaceholder('Discord-User auswaehlen')
+            .setMinValues(1)
+            .setMaxValues(25)
+        )
+    );
+}
+
+function buildVisibilityModal(sessionId) {
+  return new ModalBuilder()
+    .setCustomId(`wc:setup:visibility:${sessionId}`)
+    .setTitle('Sichtbarkeit')
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel('Was duerfen Teams sehen?')
+        .setStringSelectMenuComponent(
+          new StringSelectMenuBuilder()
+            .setCustomId('visibility')
+            .setPlaceholder('Sichtbarkeit waehlen')
+            .addOptions(
+              { label: 'Alle sehen alles', value: 'all' },
+              { label: 'Nur eigenes Team', value: 'own' }
+            )
+        )
+    );
+}
+
+function buildTimingModal(sessionId) {
+  const modal = new ModalBuilder()
+    .setCustomId(`wc:setup:timing:${sessionId}`)
+    .setTitle('Zeitmodus');
+
+  modal.addLabelComponents(
+    new LabelBuilder()
+      .setLabel('Zeitmodus')
+      .setStringSelectMenuComponent(
+        new StringSelectMenuBuilder()
+          .setCustomId('timing_mode')
+          .setPlaceholder('Zeitmodus waehlen')
+          .addOptions(
+            { label: 'Zeit zaehlen', value: 'stopwatch' },
+            { label: 'Zeitlimit', value: 'limit' }
+          )
+      ),
+    new LabelBuilder()
+      .setLabel('Zeitlimit in Minuten')
+      .setDescription('Nur ausfuellen, wenn du Zeitlimit waehlst.')
+      .setTextInputComponent(
+        new TextInputBuilder()
         .setCustomId('minutes')
-        .setLabel('Zeitlimit in Minuten')
         .setStyle(TextInputStyle.Short)
-        .setRequired(true)
+        .setRequired(false)
         .setPlaceholder('z.B. 90')
     )
   );

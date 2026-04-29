@@ -323,7 +323,7 @@ Klicke auf:
 Neue Challenge
 ```
 
-Dann fuehrt dich der Bot privat durch das Setup.
+Dann fuehrt dich der Bot mit Popups durch das Setup. Discord nennt diese Popups auch `Modals`.
 
 ### 3. Setup-Schritte
 
@@ -336,6 +336,8 @@ Der Bot fragt nacheinander:
 5. Welche Aufgaben es gibt.
 6. Ob Zeit nur gezaehlt wird oder ein Zeitlimit gilt.
 
+Diese Abfragen erscheinen als Popups. Bei Team-Usern kannst du Discord-User direkt im Popup auswaehlen.
+
 ### 4. Aufgaben hinzufuegen
 
 Du musst keine Syntax mehr lernen.
@@ -344,13 +346,13 @@ Pro Aufgabe:
 
 - Titel eintragen
 - Anzahl eintragen
-- BxB aktivieren oder nicht
+- BxB per Checkbox aktivieren oder nicht
 
 BxB bedeutet aktuell:
 
 ```text
-Ja = b2b
-Nein = kein b2b
+Checkbox aktiv = b2b
+Checkbox aus = kein b2b
 ```
 
 ### 5. Aufgabe waehrend der Challenge abhaken
