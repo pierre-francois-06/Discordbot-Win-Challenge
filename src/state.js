@@ -127,11 +127,13 @@ function resetTaskProgress(state, teamId, taskId) {
     }
 
     if (!task.streak) {
-        throw new Error("Nur BxB-Aufgaben kÃ¶nnen zurÃ¼ckgesetzt werden.");
+        throw new Error("Nur BxB-Aufgaben kÃ¶nnen zurückgesetzt werden.");
     }
 
     if (isTaskComplete(team, task)) {
-        throw new Error("Fertige BxB-Aufgaben kÃ¶nnen nicht zurÃ¼ckgesetzt werden.");
+        throw new Error(
+            "Fertige BxB-Aufgaben kÃ¶nnen nicht zurückgesetzt werden.",
+        );
     }
 
     delete team.completed[taskId];
