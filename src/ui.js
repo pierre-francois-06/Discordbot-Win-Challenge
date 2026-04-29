@@ -14,6 +14,7 @@ const {
     getTeamTotalMs,
     getWinnerTeam,
     summarizeTeam,
+    getChallengeElapsedMs,
 } = require("./state");
 
 function buildSetupPanel() {
@@ -191,7 +192,7 @@ function buildChallengeMessage(state) {
         .setColor(state.status === "ended" ? 0x828282 : 0x27ae60)
         .setDescription(buildChallengeStatus(state))
         .addFields(buildChallengeFields(state))
-        .setTimestamp(new Date(state.startedAt));
+        .setTimestamp(new Date(Date.now() - getChallengeElapsedMs(state)));
 
     return {
         embeds: [embed],
@@ -241,8 +242,9 @@ function buildChallengeStatus(state) {
         state.visibility === "own"
             ? "Gegnerdetails: privat"
             : "Gegnerdetails: sichtbar";
+    const displayStart = Date.now() - getChallengeElapsedMs(state);
     const lines = [
-        `Start: <t:${Math.floor(state.startedAt / 1000)}:R>`,
+        `Zeit: <t:${Math.floor(displayStart / 1000)}:R>`,
         `${mode} | ${visibility}`,
     ];
 
