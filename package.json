@@ -1,0 +1,25 @@
+{
+  "name": "discord-win-challenge-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for documenting win challenges in one text channel.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "register": "node src/register-commands.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "challenge"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
