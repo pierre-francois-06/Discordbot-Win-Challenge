@@ -13,6 +13,7 @@ Diese Anleitung führt dich komplett durch die Installation. Du musst kein Progr
 Der Bot macht Win-Challenges in Discord:
 
 - Teams erstellen
+- Teams manuell auswählen oder zufällig erstellen lassen
 - Aufgaben/Spiele eintragen
 - Aufgaben während der Challenge abhaken
 - Zeiten automatisch mitschreiben
@@ -346,13 +347,45 @@ Wichtig: Discord erlaubt nicht zuverlässig, direkt aus einem abgeschickten Popu
 Der Bot fragt nacheinander:
 
 1. Wie viele Teams?
-2. Welche User sind in Team 1?
-3. Welche User sind in Team 2?
-4. Ob Gegnerdetails sichtbar sein sollen.
-5. Welche Aufgaben es gibt.
-6. Ob Zeit nur gezählt wird oder ein Zeitlimit gilt.
+2. Ob du Teams manuell auswählst oder zufällig erstellen lässt.
+3. Bei manuellen Teams: Welche User sind in Team 1, Team 2 und so weiter?
+4. Bei zufälligen Teams: Alle Mitspieler auswählen, danach verteilt der Bot sie automatisch auf die gewählte Teamanzahl.
+5. Ob Gegnerdetails sichtbar sein sollen.
+6. Welche Aufgaben es gibt.
+7. Ob Zeit nur gezählt wird oder ein Zeitlimit gilt.
 
 Diese Abfragen erscheinen als Popups. Bei Team-Usern kannst du Discord-User direkt im Popup auswählen.
+
+#### Teams manuell auswählen
+
+Nimm diese Option, wenn du selbst bestimmen willst, wer in welchem Team ist.
+
+Beispiel:
+
+```text
+Teamanzahl: 2
+Team 1: Pierre, Max
+Team 2: Lisa, Tom
+```
+
+#### Teams zufällig erstellen
+
+Nimm diese Option, wenn der Bot faire Zufallsteams bauen soll.
+
+So funktioniert es:
+
+1. Du wählst zuerst die Anzahl der Teams aus, zum Beispiel `2`, `3` oder `4`.
+2. Danach wählst du alle Mitspieler aus.
+3. Der Bot mischt alle ausgewählten Spieler zufällig.
+4. Danach verteilt er sie möglichst gleich groß auf die Teams.
+
+Beispiel:
+
+```text
+Teamanzahl: 2
+Ausgewählte Mitspieler: Pierre, Max, Lisa, Tom, Sarah
+Ergebnis: Team 1 hat 3 Spieler, Team 2 hat 2 Spieler
+```
 
 ### 4. Aufgaben hinzufügen
 

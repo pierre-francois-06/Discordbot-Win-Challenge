@@ -17,6 +17,7 @@ const {
   UserSelectMenuBuilder
 } = require('discord.js');
 const { createTask } = require('./tasks');
+const { distributeRandomTeams } = require('./teams');
 const { parsePositiveMinutes } = require('./time');
 const {
   addCleanupMessage,
@@ -220,6 +221,16 @@ async function handleSetupButton(interaction) {
       return;
     }
 
+    if (value === 'mode') {
+      await interaction.showModal(buildTeamModeModal(sessionId));
+      return;
+    }
+
+    if (value === 'randomplayers') {
+      await interaction.showModal(buildRandomPlayersModal(sessionId, session.teamCount));
+      return;
+    }
+
     if (value === 'visibility') {
       await interaction.showModal(buildVisibilityModal(sessionId));
       return;
@@ -317,10 +328,32 @@ async function handleModal(interaction) {
       channelId: interaction.channelId,
       teamCount,
       teams: [],
+      teamMode: null,
       tasks: [],
       visibility: 'all'
     });
-    await interaction.reply(buildNextModalPrompt(newSessionId, 'team', 'Team 1 auswählen', 0));
+    await interaction.reply(buildNextModalPrompt(newSessionId, 'mode', 'Teammodus auswählen'));
+    return;
+  }
+
+  if (step === 'mode') {
+    const session = getSession(sessionId, interaction.user.id);
+    session.teamMode = interaction.fields.getStringSelectValues('team_mode')[0];
+
+    if (session.teamMode === 'random') {
+      await interaction.reply(buildNextModalPrompt(sessionId, 'randomplayers', 'Mitspieler auswählen'));
+      return;
+    }
+
+    await interaction.reply(buildNextModalPrompt(sessionId, 'team', 'Team 1 auswählen', 0));
+    return;
+  }
+
+  if (step === 'randomplayers') {
+    const session = getSession(sessionId, interaction.user.id);
+    const users = interaction.fields.getSelectedUsers('random_players', true);
+    session.teams = distributeRandomTeams([...users.keys()], session.teamCount);
+    await interaction.reply(buildNextModalPrompt(sessionId, 'visibility', 'Sichtbarkeit auswählen'));
     return;
   }
 
@@ -612,6 +645,43 @@ function buildTeamUsersModal(sessionId, teamIndex, teamCount) {
             .setCustomId('team_users')
             .setPlaceholder('Discord-User auswählen')
             .setMinValues(1)
+            .setMaxValues(25)
+        )
+    );
+}
+
+function buildTeamModeModal(sessionId) {
+  return new ModalBuilder()
+    .setCustomId(`wc:setup:mode:${sessionId}`)
+    .setTitle('Teammodus')
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel('Wie sollen Teams erstellt werden?')
+        .setStringSelectMenuComponent(
+          new StringSelectMenuBuilder()
+            .setCustomId('team_mode')
+            .setPlaceholder('Teammodus wählen')
+            .addOptions(
+              { label: 'Teams manuell auswählen', value: 'manual' },
+              { label: 'Teams zufällig erstellen', value: 'random' }
+            )
+        )
+    );
+}
+
+function buildRandomPlayersModal(sessionId, teamCount) {
+  return new ModalBuilder()
+    .setCustomId(`wc:setup:randomplayers:${sessionId}`)
+    .setTitle('Zufällige Teams')
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel(`Alle Mitspieler auswählen (${teamCount} Teams)`)
+        .setDescription('Der Bot verteilt alle ausgewählten Spieler möglichst gleich groß auf die Teams.')
+        .setUserSelectMenuComponent(
+          new UserSelectMenuBuilder()
+            .setCustomId('random_players')
+            .setPlaceholder('Alle Mitspieler auswählen')
+            .setMinValues(teamCount)
             .setMaxValues(25)
         )
     );
