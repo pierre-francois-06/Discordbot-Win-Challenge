@@ -20,6 +20,8 @@ function createChallenge({
         status: "active",
         startedAt: now,
         endedAt: null,
+        pausedAt: null,
+        totalPausedMs: 0,
         timing,
         visibility,
         cleanupMessageIds: [],
@@ -60,7 +62,7 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
         throw new Error("Team wurde nicht gefunden.");
     }
 
-    const elapsedMs = now - state.startedAt;
+    const elapsedMs = getChallengeElapsedMs(state, now);
     const previousElapsedMs = getLastTeamElapsedMs(team);
     const taskDurationMs = elapsedMs - previousElapsedMs;
     const validTaskIds = new Set(state.tasks.map((task) => task.id));
@@ -209,6 +211,28 @@ function summarizeTeam(state, team, winnerTotalMs = null) {
     return `${team.name}: ${status}${delta}`;
 }
 
+function getChallengeElapsedMs(state, now = Date.now()) {
+    const pauseUntil = state.pausedAt ? state.pausedAt : now;
+    return pauseUntil - state.startedAt - (state.totalPausedMs || 0);
+}
+
+function pauseChallenge(state, now = Date.now()) {
+    if (state.status !== "active") return state;
+    if (state.pausedAt) return state;
+
+    state.pausedAt = now;
+    return state;
+}
+
+function resumeChallenge(state, now = Date.now()) {
+    if (state.status !== "active") return state;
+    if (!state.pausedAt) return state;
+
+    state.totalPausedMs = (state.totalPausedMs || 0) + (now - state.pausedAt);
+    state.pausedAt = null;
+    return state;
+}
+
 module.exports = {
     createChallenge,
     getAllPlayerIds,
@@ -223,4 +247,7 @@ module.exports = {
     getTeamTotalMs,
     getWinnerTeam,
     summarizeTeam,
+    getChallengeElapsedMs,
+    pauseChallenge,
+    resumeChallenge,
 };
