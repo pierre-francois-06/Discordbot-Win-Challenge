@@ -568,7 +568,7 @@ function buildTaskModal(sessionId) {
       ),
     new LabelBuilder()
       .setLabel('BxB')
-      .setDescription('Aktiviert bedeutet b2b.')
+      .setDescription('Aktiviert bedeutet: Anzahl 5 wird zu b5b.')
       .setCheckboxComponent(
         new CheckboxBuilder()
           .setCustomId('b2b')

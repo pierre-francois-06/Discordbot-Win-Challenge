@@ -367,8 +367,8 @@ Pro Aufgabe:
 BxB bedeutet aktuell:
 
 ```text
-Checkbox aktiv = b2b
-Checkbox aus = kein b2b
+Checkbox aktiv + Anzahl 5 = b5b
+Checkbox aus + Anzahl 5 = x5
 ```
 
 ### 5. Aufgabe während der Challenge abhaken

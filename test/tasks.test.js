@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { createTask, parseTasks } = require('../src/tasks');
+const { createTask, formatTaskLabel, parseTasks } = require('../src/tasks');
 
 test('parseTasks parses normal task lines', () => {
   const tasks = parseTasks('Rocket League | 3 | b2b\nFortnite | 5 |\nMario Kart | 1 | b10b');
@@ -32,7 +32,7 @@ test('createTask validates guided task input', () => {
     id: 'task_1',
     name: 'Rocket League',
     count: 3,
-    streak: 'b2b'
+    streak: 'b3b'
   });
 
   assert.deepEqual(createTask({ index: 1, title: 'Fortnite', count: '5', b2b: false }), {
@@ -41,6 +41,11 @@ test('createTask validates guided task input', () => {
     count: 5,
     streak: null
   });
+});
+
+test('formatTaskLabel shows streak tasks without duplicate count', () => {
+  assert.equal(formatTaskLabel({ name: 'Rocket League', count: 5, streak: 'b5b' }), 'Rocket League b5b');
+  assert.equal(formatTaskLabel({ name: 'Fortnite', count: 5, streak: null }), 'Fortnite x5');
 });
 
 test('createTask rejects invalid guided task input', () => {

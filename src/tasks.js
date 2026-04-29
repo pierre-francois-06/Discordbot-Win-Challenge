@@ -46,9 +46,11 @@ function parseTasks(input) {
 }
 
 function formatTaskLabel(task) {
-  const parts = [`${task.name} x${task.count}`];
-  if (task.streak) parts.push(task.streak);
-  return parts.join(' ');
+  if (task.streak) {
+    return `${task.name} ${task.streak}`;
+  }
+
+  return `${task.name} x${task.count}`;
 }
 
 function createTask({ index, title, count, b2b }) {
@@ -71,7 +73,7 @@ function createTask({ index, title, count, b2b }) {
     id: `task_${index + 1}`,
     name,
     count: parsedCount,
-    streak: b2b ? 'b2b' : null
+    streak: b2b ? `b${parsedCount}b` : null
   };
 }
 
