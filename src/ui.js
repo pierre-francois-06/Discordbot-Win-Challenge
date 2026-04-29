@@ -247,7 +247,7 @@ function buildChallengeStatus(state) {
     const lines = [
         state.pausedAt
             ? `Zeit: ${formatDuration(getChallengeElapsedMs(state))} (pausiert)`
-            : `Zeit: ${Math.round(displayStart / 1000)}`,
+            : `Zeit: ${formatDuration(Math.round(displayStart / 1000) * 1000)}`,
         `${mode} | ${visibility}`,
     ];
 
