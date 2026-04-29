@@ -1,5 +1,7 @@
 node_modules/
 .env
+.env copy.example
+Token.txt
 data/*.json
 npm-debug.log*
 .DS_Store
