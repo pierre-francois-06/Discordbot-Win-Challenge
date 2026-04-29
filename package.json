@@ -1,7 +1,7 @@
 {
   "name": "discord-win-challenge-bot",
   "version": "1.0.0",
-  "description": "Discord bot for documenting win challenges in one text channel.",
+  "description": "Discordbot-Win-Challenge: Discord Win Challenge Bot and Discord Challenge Tracker for gaming teams.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -11,10 +11,26 @@
   "keywords": [
     "discord",
     "bot",
-    "challenge"
+    "challenge",
+    "discord-bot",
+    "discordbot-win-challenge",
+    "discord-win-challenge-bot",
+    "win-challenge",
+    "discord-challenge-tracker",
+    "gaming-challenge",
+    "discord-js",
+    "raspberry-pi"
   ],
-  "author": "",
+  "author": "pierre-francois-06",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pierre-francois-06/Discordbot-Win-Challenge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pierre-francois-06/Discordbot-Win-Challenge/issues"
+  },
+  "homepage": "https://github.com/pierre-francois-06/Discordbot-Win-Challenge#readme",
   "dependencies": {
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0"

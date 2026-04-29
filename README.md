@@ -1,4 +1,12 @@
-# Discord Win-Challenge Bot
+# Discordbot-Win-Challenge
+
+**Discord Win Challenge Bot / Win Challenge Discord Bot / Discord Challenge Tracker**
+
+Ein Discord-Bot für Win-Challenges, Team-Challenges, Gaming-Challenges und Siegesserien. Dieses GitHub-Repository enthält den kompletten Code für einen Discordbot, der Challenges in einem Discord-Textkanal erstellt, dokumentiert und am Ende eine Siegerehrung postet.
+
+Repository: <https://github.com/pierre-francois-06/Discordbot-Win-Challenge>
+
+Suchbegriffe: `Discordbot-Win-Challenge`, `Discord Win Challenge Bot`, `Win Challenge Discord Bot`, `Discord Challenge Bot`, `Discord Challenge Tracker`, `Discord Gaming Challenge Bot`, `Discord Bot Raspberry Pi`, `discord.js challenge bot`.
 
 Diese Anleitung führt dich komplett durch die Installation. Du musst kein Programmierer sein. Folge einfach der Reihenfolge.
 
