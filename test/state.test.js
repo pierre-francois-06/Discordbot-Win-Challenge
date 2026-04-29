@@ -39,10 +39,22 @@ test('markTasksComplete records elapsed time and prevents duplicates', () => {
   let result = markTasksComplete(state, 'team_1', ['task_1'], 61000);
   assert.deepEqual(result.changed, ['task_1']);
   assert.equal(state.teams[0].completed.task_1.elapsedMs, 60000);
+  assert.equal(state.teams[0].completed.task_1.taskDurationMs, 60000);
 
   result = markTasksComplete(state, 'team_1', ['task_1'], 90000);
   assert.deepEqual(result.changed, []);
   assert.equal(state.teams[0].completed.task_1.elapsedMs, 60000);
+  assert.equal(state.teams[0].completed.task_1.taskDurationMs, 60000);
+});
+
+test('markTasksComplete records task duration since previous team task', () => {
+  const state = sampleState();
+
+  markTasksComplete(state, 'team_1', ['task_1'], 61000);
+  markTasksComplete(state, 'team_1', ['task_2'], 151000);
+
+  assert.equal(state.teams[0].completed.task_2.elapsedMs, 150000);
+  assert.equal(state.teams[0].completed.task_2.taskDurationMs, 90000);
 });
 
 test('markTasksComplete detects first finisher and winner', () => {

@@ -234,7 +234,7 @@ function buildChallengeFields(state) {
     const lines = [`Spieler: ${team.userIds.map((id) => `<@${id}>`).join(', ')}`];
     for (const task of state.tasks) {
       const completed = team.completed[task.id];
-      lines.push(`${completed ? formatDuration(completed.elapsedMs) : 'offen'} - ${formatTaskLabel(task)}`);
+      lines.push(`${completed ? formatCompletionTime(completed) : 'offen'} - ${formatTaskLabel(task)}`);
     }
     return {
       name: team.name,
@@ -325,7 +325,7 @@ function buildSummaryMessage(state) {
     const lines = [summarizeTeam(state, team, winnerTotal)];
     for (const task of state.tasks) {
       const completed = team.completed[task.id];
-      lines.push(`${formatTaskLabel(task)}: ${completed ? formatDuration(completed.elapsedMs) : 'DNF'}`);
+      lines.push(`${formatTaskLabel(task)}: ${completed ? formatCompletionTime(completed) : 'DNF'}`);
     }
     embed.addFields({
       name: title,
@@ -335,6 +335,11 @@ function buildSummaryMessage(state) {
   }
 
   return { embeds: [embed] };
+}
+
+function formatCompletionTime(completed) {
+  const taskDurationMs = completed.taskDurationMs ?? completed.elapsedMs;
+  return `${formatDuration(taskDurationMs)} (gesamt ${formatDuration(completed.elapsedMs)})`;
 }
 
 function truncate(value, maxLength) {

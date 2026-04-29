@@ -53,6 +53,8 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
   }
 
   const elapsedMs = now - state.startedAt;
+  const previousElapsedMs = getLastTeamElapsedMs(team);
+  const taskDurationMs = elapsedMs - previousElapsedMs;
   const validTaskIds = new Set(state.tasks.map((task) => task.id));
   const changed = [];
 
@@ -62,6 +64,7 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
 
     team.completed[taskId] = {
       elapsedMs,
+      taskDurationMs,
       completedAt: now
     };
     changed.push(taskId);
@@ -86,6 +89,12 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
     teamFinished: Boolean(team.finishedAt),
     allFinished: state.teams.every((entry) => isTeamComplete(state, entry))
   };
+}
+
+function getLastTeamElapsedMs(team) {
+  const completed = Object.values(team.completed || {});
+  if (completed.length === 0) return 0;
+  return Math.max(...completed.map((entry) => entry.elapsedMs || 0));
 }
 
 function addCleanupMessage(state, messageId) {
