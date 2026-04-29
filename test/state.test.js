@@ -57,23 +57,23 @@ test("markTasksComplete records task duration since previous team task", () => {
 test("markTasksComplete detects first finisher and winner", () => {
     const state = sampleState();
 
-    markTasksComplete(state, "team_1", ["task_1", "task_2"], 21000);
+    markTasksComplete(state, "team_1", ["task_1", "task_2"], 121000);
 
     assert.equal(state.firstFinishTeamId, "team_1");
     assert.equal(state.vote.status, "open");
     assert.equal(getWinnerTeam(state).id, "team_1");
-    assert.equal(getTeamTotalMs(state, state.teams[0]), 20000);
+    assert.equal(getTeamTotalMs(state, state.teams[0]), 120000);
     assert.deepEqual(getOpenTasksForTeam(state, "team_1"), []);
 });
 
 test("castVote uses majority and rejects spectators", () => {
     const state = sampleState();
-    markTasksComplete(state, "team_1", ["task_1", "task_2"], 21000);
+    markTasksComplete(state, "team_1", ["task_1", "task_2"], 31000);
 
     assert.throws(
-        () => castVote(state, "spectator", "end", 22000),
+        () => castVote(state, "spectator", "end", 32000),
         /Mitspieler/,
     );
-    assert.equal(castVote(state, "u1", "end", 22000).result, "pending");
-    assert.equal(castVote(state, "u2", "end", 23000).result, "end");
+    assert.equal(castVote(state, "u1", "end", 32000).result, "pending");
+    assert.equal(castVote(state, "u2", "end", 33000).result, "end");
 });
