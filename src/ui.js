@@ -242,7 +242,8 @@ function buildChallengeStatus(state) {
         state.visibility === "own"
             ? "Gegnerdetails: privat"
             : "Gegnerdetails: sichtbar";
-    const displayStart = Date.now() - getChallengeElapsedMs(state);
+    const now = state.pausedAt ? state.pausedAt : Date.now();
+    const displayStart = now - getChallengeElapsedMs(state);
     const lines = [
         `Zeit: <t:${Math.floor(displayStart / 1000)}:R>`,
         `${mode} | ${visibility}`,
