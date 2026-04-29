@@ -1,6 +1,9 @@
 require('dotenv').config();
 
 const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   CheckboxBuilder,
   Client,
   Events,
@@ -121,7 +124,7 @@ async function handleCommand(interaction) {
 }
 
 async function handleButton(interaction) {
-  const [namespace, action, arg1, arg2, arg3] = interaction.customId.split(':');
+  const [namespace, action] = interaction.customId.split(':');
   if (namespace !== 'wc') return;
 
   if (action === 'new') {
@@ -130,9 +133,11 @@ async function handleButton(interaction) {
   }
 
   if (action === 'setup') {
-    await handleSetupButton(interaction, arg1, arg2, arg3);
+    await handleSetupButton(interaction);
     return;
   }
+
+  const [, , arg1, arg2] = interaction.customId.split(':');
 
   if (action === 'mine') {
     const state = store.getChallengeByMessageId(arg1);
@@ -204,20 +209,40 @@ async function startChallengeSetup(interaction) {
   await interaction.showModal(buildTeamCountModal());
 }
 
-async function handleSetupButton(interaction, step, arg2, arg3) {
-  const sessionId = step === 'task' ? arg3 : arg2;
-  const value = step === 'task' ? arg2 : arg3;
-  const session = getSession(sessionId, interaction.user.id);
+async function handleSetupButton(interaction) {
+  const [, , step, value, sessionId, extra] = interaction.customId.split(':');
+
+  if (step === 'next') {
+    const session = getSession(sessionId, interaction.user.id);
+
+    if (value === 'team') {
+      await interaction.showModal(buildTeamUsersModal(sessionId, Number.parseInt(extra, 10), session.teamCount));
+      return;
+    }
+
+    if (value === 'visibility') {
+      await interaction.showModal(buildVisibilityModal(sessionId));
+      return;
+    }
+
+    if (value === 'tasks') {
+      await interaction.update(withoutEphemeral(buildTaskReviewPrompt(sessionId, session.tasks)));
+      return;
+    }
+  }
+
+  const realSessionId = step === 'task' ? sessionId : value;
+  const session = getSession(realSessionId, interaction.user.id);
 
   if (step === 'task') {
     if (value === 'add') {
-      await interaction.showModal(buildTaskModal(sessionId));
+      await interaction.showModal(buildTaskModal(realSessionId));
       return;
     }
 
     if (value === 'remove') {
       session.tasks.pop();
-      await interaction.update(withoutEphemeral(buildTaskReviewPrompt(sessionId, session.tasks)));
+      await interaction.update(withoutEphemeral(buildTaskReviewPrompt(realSessionId, session.tasks)));
       return;
     }
 
@@ -225,13 +250,13 @@ async function handleSetupButton(interaction, step, arg2, arg3) {
       if (session.tasks.length === 0) {
         throw new Error('Bitte mindestens eine Aufgabe anlegen.');
       }
-      await interaction.showModal(buildTimingModal(sessionId));
+      await interaction.showModal(buildTimingModal(realSessionId));
       return;
     }
   }
 
   if (step === 'timing') {
-    await interaction.showModal(buildTimingModal(sessionId));
+    await interaction.showModal(buildTimingModal(realSessionId));
   }
 }
 
@@ -294,7 +319,7 @@ async function handleModal(interaction) {
       tasks: [],
       visibility: 'all'
     });
-    await interaction.showModal(buildTeamUsersModal(newSessionId, 0, teamCount));
+    await interaction.reply(buildNextModalPrompt(newSessionId, 'team', 'Team 1 auswählen', 0));
     return;
   }
 
@@ -307,11 +332,11 @@ async function handleModal(interaction) {
 
     const nextTeamIndex = teamIndex + 1;
     if (nextTeamIndex < teamSession.teamCount) {
-      await interaction.showModal(buildTeamUsersModal(realSessionId, nextTeamIndex, teamSession.teamCount));
+      await interaction.reply(buildNextModalPrompt(realSessionId, 'team', `Team ${nextTeamIndex + 1} auswählen`, nextTeamIndex));
       return;
     }
 
-    await interaction.showModal(buildVisibilityModal(realSessionId));
+    await interaction.reply(buildNextModalPrompt(realSessionId, 'visibility', 'Sichtbarkeit auswählen'));
     return;
   }
 
@@ -319,7 +344,7 @@ async function handleModal(interaction) {
 
   if (step === 'visibility') {
     session.visibility = interaction.fields.getStringSelectValues('visibility')[0];
-    await interaction.reply(buildTaskReviewPrompt(sessionId, session.tasks));
+    await interaction.reply(buildNextModalPrompt(sessionId, 'tasks', 'Aufgaben hinzufügen'));
     return;
   }
 
@@ -639,6 +664,25 @@ function buildTimingModal(sessionId) {
   );
 
   return modal;
+}
+
+function buildNextModalPrompt(sessionId, target, label, extra = null) {
+  const customId = ['wc', 'setup', 'next', target, sessionId, extra]
+    .filter((part) => part !== null && part !== undefined)
+    .join(':');
+
+  return {
+    content: 'Klicke auf den Button, um mit dem nächsten Popup weiterzumachen.',
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(customId)
+          .setLabel(label)
+          .setStyle(ButtonStyle.Primary)
+      )
+    ],
+    ephemeral: true
+  };
 }
 
 function requireCreatorOrAdmin(interaction, state) {

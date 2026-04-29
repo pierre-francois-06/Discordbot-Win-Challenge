@@ -339,6 +339,8 @@ oder direkt:
 
 Beide Wege starten denselben Setup-Flow. Danach führt dich der Bot mit Popups durch das Setup. Discord nennt diese Popups auch `Modals`.
 
+Wichtig: Discord erlaubt nicht zuverlässig, direkt aus einem abgeschickten Popup sofort das nächste Popup zu öffnen. Deshalb zeigt der Bot zwischen manchen Popups kurz einen privaten `Weiter`-Button. Die eigentlichen Eingaben bleiben trotzdem in Popups.
+
 ### 3. Setup-Schritte
 
 Der Bot fragt nacheinander:
