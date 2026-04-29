@@ -27,6 +27,7 @@ const {
     findTeamForUser,
     markTasksComplete,
     pauseChallenge,
+    resetTaskProgress,
     resumeChallenge,
 } = require("./state");
 const { createStore } = require("./store");
@@ -406,7 +407,7 @@ async function handleStringSelect(interaction) {
     const [namespace, action] = interaction.customId.split(":");
     if (namespace !== "wc") return;
 
-    if (action === "complete") {
+    if (action === "complete" || action === "reset") {
         const [, , messageId, teamId] = interaction.customId.split(":");
         const state = store.getChallengeByMessageId(messageId);
         if (!state) {
@@ -434,6 +435,17 @@ async function handleStringSelect(interaction) {
                     "Du kannst nur Aufgaben für dein eigenes Team abhaken.",
                 ephemeral: true,
             });
+            return;
+        }
+
+        if (action === "reset") {
+            resetTaskProgress(state, teamId, interaction.values[0]);
+            await message.edit(buildChallengeMessage(state));
+            store.saveChallenge(state);
+            await updateTemporary(
+                interaction,
+                withoutEphemeral(buildMyTasksMenu(state, teamId, message.id)),
+            );
             return;
         }
 

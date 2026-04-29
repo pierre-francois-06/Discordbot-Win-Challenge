@@ -11,8 +11,11 @@ const { formatDuration } = require("./time");
 const {
     getAllPlayerIds,
     getOpenTasksForTeam,
+    getTaskProgress,
+    getTeamProgress,
     getTeamTotalMs,
     getWinnerTeam,
+    isTaskComplete,
     summarizeTeam,
     getChallengeElapsedMs,
 } = require("./state");
@@ -267,7 +270,7 @@ function buildChallengeFields(state) {
     if (state.visibility === "own") {
         return state.teams.map((team) => ({
             name: team.name,
-            value: `${team.userIds.map((id) => `<@${id}>`).join(", ")}\nFortschritt: ${Object.keys(team.completed).length}/${state.tasks.length}`,
+            value: `${team.userIds.map((id) => `<@${id}>`).join(", ")}\nFortschritt: ${formatTeamProgress(state, team)}`,
             inline: true,
         }));
     }
@@ -278,8 +281,9 @@ function buildChallengeFields(state) {
         ];
         for (const task of state.tasks) {
             const completed = team.completed[task.id];
+            const complete = isTaskComplete(team, task);
             lines.push(
-                `${completed ? formatCompletionTime(completed) : "offen"} - ${formatTaskLabel(task)}`,
+                `${complete ? formatCompletionTime(completed) : formatTaskProgress(team, task)} - ${formatTaskLabel(task)}`,
             );
         }
         return {
@@ -293,6 +297,12 @@ function buildChallengeFields(state) {
 function buildMyTasksMenu(state, teamId, publicMessageId) {
     const openTasks = getOpenTasksForTeam(state, teamId);
     const team = state.teams.find((entry) => entry.id === teamId);
+    const resettableTasks = state.tasks.filter(
+        (task) =>
+            task.streak &&
+            getTaskProgress(team, task) > 0 &&
+            !isTaskComplete(team, task),
+    );
 
     if (openTasks.length === 0) {
         return {
@@ -315,10 +325,19 @@ function buildMyTasksMenu(state, teamId, publicMessageId) {
                     .setMaxValues(1)
                     .addOptions(
                         openTasks.map((task) => ({
-                            label: truncate(formatTaskLabel(task), 100),
+                            label: truncate(
+                                `${formatTaskLabel(task)} (${formatTaskProgress(team, task)})`,
+                                100,
+                            ),
                             value: task.id,
                         })),
                     ),
+            ),
+            ...buildResetTaskRows(
+                resettableTasks,
+                team,
+                publicMessageId,
+                teamId,
             ),
         ],
         ephemeral: true,
@@ -380,8 +399,9 @@ function buildSummaryMessage(state) {
         const lines = [summarizeTeam(state, team, winnerTotal)];
         for (const task of state.tasks) {
             const completed = team.completed[task.id];
+            const complete = isTaskComplete(team, task);
             lines.push(
-                `${formatTaskLabel(task)}: ${completed ? formatCompletionTime(completed) : "DNF"}`,
+                `${formatTaskLabel(task)}: ${complete ? formatCompletionTime(completed) : formatTaskProgress(team, task)}`,
             );
         }
         embed.addFields({
@@ -397,6 +417,38 @@ function buildSummaryMessage(state) {
 function formatCompletionTime(completed) {
     const taskDurationMs = completed.taskDurationMs ?? completed.elapsedMs;
     return `${formatDuration(taskDurationMs)} (gesamt ${formatDuration(completed.elapsedMs)})`;
+}
+
+function formatTaskProgress(team, task) {
+    return `${getTaskProgress(team, task)}/${task.count}`;
+}
+
+function formatTeamProgress(state, team) {
+    const progress = getTeamProgress(state, team);
+    return `${progress.done}/${progress.total}`;
+}
+
+function buildResetTaskRows(tasks, team, publicMessageId, teamId) {
+    if (tasks.length === 0) return [];
+
+    return [
+        new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId(`wc:reset:${publicMessageId}:${teamId}`)
+                .setPlaceholder("BxB-Siege zurÃ¼cksetzen")
+                .setMinValues(1)
+                .setMaxValues(1)
+                .addOptions(
+                    tasks.map((task) => ({
+                        label: truncate(
+                            `${formatTaskLabel(task)} zurÃ¼cksetzen (${formatTaskProgress(team, task)})`,
+                            100,
+                        ),
+                        value: task.id,
+                    })),
+                ),
+        ),
+    ];
 }
 
 function truncate(value, maxLength) {

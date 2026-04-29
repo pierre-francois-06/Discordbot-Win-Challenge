@@ -5,9 +5,11 @@ const {
     createChallenge,
     findTeamForUser,
     getOpenTasksForTeam,
+    getTaskProgress,
     getTeamTotalMs,
     getWinnerTeam,
     markTasksComplete,
+    resetTaskProgress,
 } = require("../src/state");
 
 function sampleState() {
@@ -48,16 +50,43 @@ test("markTasksComplete records task duration since previous team task", () => {
     const state = sampleState();
 
     markTasksComplete(state, "team_1", ["task_1"], 61000);
+    markTasksComplete(state, "team_1", ["task_2"], 121000);
     markTasksComplete(state, "team_1", ["task_2"], 151000);
 
     assert.equal(state.teams[0].completed.task_2.elapsedMs, 150000);
     assert.equal(state.teams[0].completed.task_2.taskDurationMs, 90000);
 });
 
+test("markTasksComplete counts one win per click until task count is reached", () => {
+    const state = sampleState();
+
+    let result = markTasksComplete(state, "team_1", ["task_2"], 61000);
+    assert.deepEqual(result.changed, ["task_2"]);
+    assert.equal(getTaskProgress(state.teams[0], state.tasks[1]), 1);
+    assert.equal(state.teams[0].completed.task_2.elapsedMs, undefined);
+    assert.deepEqual(getOpenTasksForTeam(state, "team_1"), state.tasks);
+
+    result = markTasksComplete(state, "team_1", ["task_2"], 91000);
+    assert.deepEqual(result.changed, ["task_2"]);
+    assert.equal(getTaskProgress(state.teams[0], state.tasks[1]), 2);
+    assert.equal(state.teams[0].completed.task_2.elapsedMs, 90000);
+});
+
+test("resetTaskProgress resets unfinished BxB progress", () => {
+    const state = sampleState();
+
+    markTasksComplete(state, "team_1", ["task_2"], 61000);
+    assert.equal(getTaskProgress(state.teams[0], state.tasks[1]), 1);
+
+    resetTaskProgress(state, "team_1", "task_2");
+    assert.equal(getTaskProgress(state.teams[0], state.tasks[1]), 0);
+});
+
 test("markTasksComplete detects first finisher and winner", () => {
     const state = sampleState();
 
     markTasksComplete(state, "team_1", ["task_1", "task_2"], 121000);
+    markTasksComplete(state, "team_1", ["task_2"], 121000);
 
     assert.equal(state.firstFinishTeamId, "team_1");
     assert.equal(state.vote.status, "open");
@@ -69,6 +98,7 @@ test("markTasksComplete detects first finisher and winner", () => {
 test("castVote uses majority and rejects spectators", () => {
     const state = sampleState();
     markTasksComplete(state, "team_1", ["task_1", "task_2"], 31000);
+    markTasksComplete(state, "team_1", ["task_2"], 31000);
 
     assert.throws(
         () => castVote(state, "spectator", "end", 32000),

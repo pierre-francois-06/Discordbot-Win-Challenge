@@ -49,11 +49,11 @@ function findTeamForUser(state, userId) {
 function getOpenTasksForTeam(state, teamId) {
     const team = state.teams.find((entry) => entry.id === teamId);
     if (!team) return [];
-    return state.tasks.filter((task) => !team.completed[task.id]);
+    return state.tasks.filter((task) => !isTaskComplete(team, task));
 }
 
 function isTeamComplete(state, team) {
-    return state.tasks.every((task) => Boolean(team.completed[task.id]));
+    return state.tasks.every((task) => isTaskComplete(team, task));
 }
 
 function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
@@ -70,13 +70,27 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
 
     for (const taskId of taskIds) {
         if (!validTaskIds.has(taskId)) continue;
-        if (team.completed[taskId]) continue;
+        const task = state.tasks.find((entry) => entry.id === taskId);
+        if (!task || isTaskComplete(team, task)) continue;
+
+        const current = getTaskProgress(team, task);
+        const nextProgress = Math.min(current + 1, task.count);
 
         team.completed[taskId] = {
-            elapsedMs,
-            taskDurationMs,
-            completedAt: now,
+            ...(team.completed[taskId] || {}),
+            progress: nextProgress,
+            required: task.count,
+            updatedAt: now,
         };
+
+        if (nextProgress >= task.count) {
+            team.completed[taskId] = {
+                ...team.completed[taskId],
+                elapsedMs,
+                taskDurationMs,
+                completedAt: now,
+            };
+        }
         changed.push(taskId);
     }
 
@@ -101,10 +115,55 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
     };
 }
 
+function resetTaskProgress(state, teamId, taskId) {
+    const team = state.teams.find((entry) => entry.id === teamId);
+    if (!team) {
+        throw new Error("Team wurde nicht gefunden.");
+    }
+
+    const task = state.tasks.find((entry) => entry.id === taskId);
+    if (!task) {
+        throw new Error("Aufgabe wurde nicht gefunden.");
+    }
+
+    if (!task.streak) {
+        throw new Error("Nur BxB-Aufgaben kÃ¶nnen zurÃ¼ckgesetzt werden.");
+    }
+
+    if (isTaskComplete(team, task)) {
+        throw new Error("Fertige BxB-Aufgaben kÃ¶nnen nicht zurÃ¼ckgesetzt werden.");
+    }
+
+    delete team.completed[taskId];
+    return { state, task };
+}
+
 function getLastTeamElapsedMs(team) {
     const completed = Object.values(team.completed || {});
     if (completed.length === 0) return 0;
     return Math.max(...completed.map((entry) => entry.elapsedMs || 0));
+}
+
+function getTaskProgress(team, task) {
+    const completed = team.completed?.[task.id];
+    if (!completed) return 0;
+    if (Number.isInteger(completed.progress)) return completed.progress;
+    return completed.elapsedMs || completed.completedAt ? task.count : 0;
+}
+
+function isTaskComplete(team, task) {
+    return getTaskProgress(team, task) >= task.count;
+}
+
+function getTeamProgress(state, team) {
+    return state.tasks.reduce(
+        (progress, task) => {
+            progress.done += getTaskProgress(team, task);
+            progress.total += task.count;
+            return progress;
+        },
+        { done: 0, total: 0 },
+    );
 }
 
 function addCleanupMessage(state, messageId) {
@@ -181,7 +240,9 @@ function endChallenge(state, now = Date.now()) {
 
 function getTeamTotalMs(state, team) {
     if (team.finishedAt) return team.finishedAt - state.startedAt;
-    const completed = Object.values(team.completed);
+    const completed = Object.values(team.completed).filter((entry) =>
+        Number.isFinite(entry.elapsedMs),
+    );
     if (completed.length === 0) return null;
     return Math.max(...completed.map((entry) => entry.elapsedMs));
 }
@@ -238,8 +299,12 @@ module.exports = {
     getAllPlayerIds,
     findTeamForUser,
     getOpenTasksForTeam,
+    getTaskProgress,
+    getTeamProgress,
     isTeamComplete,
+    isTaskComplete,
     markTasksComplete,
+    resetTaskProgress,
     addCleanupMessage,
     castVote,
     countVotes,
