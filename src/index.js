@@ -41,6 +41,7 @@ const setupSessions = new Map();
 const voteTimers = new Map();
 const limitTimers = new Map();
 const store = createStore();
+const TEMPORARY_REPLY_MS = 30 * 1000;
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -96,7 +97,7 @@ async function handleCommand(interaction) {
   if (interaction.commandName === 'challenge_status') {
     const state = store.getActiveChallengeByChannelId(interaction.channelId);
     if (!state) {
-      await interaction.reply({ content: 'In diesem Kanal läuft gerade keine Challenge.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'In diesem Kanal läuft gerade keine Challenge.', ephemeral: true });
       return;
     }
 
@@ -106,21 +107,21 @@ async function handleCommand(interaction) {
       await message.edit(buildChallengeMessage(state));
       store.saveChallenge(state);
     }
-    await interaction.reply({ content: `Status aktualisiert: ${message.url}`, ephemeral: true });
+    await replyTemporary(interaction, { content: `Status aktualisiert: ${message.url}`, ephemeral: true });
     return;
   }
 
   if (interaction.commandName === 'challenge_cancel') {
     const state = store.getActiveChallengeByChannelId(interaction.channelId);
     if (!state) {
-      await interaction.reply({ content: 'In diesem Kanal läuft gerade keine Challenge.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'In diesem Kanal läuft gerade keine Challenge.', ephemeral: true });
       return;
     }
 
     requireCreatorOrAdmin(interaction, state);
     const message = await fetchStoredMessage(state);
     await finishChallenge(state, message, Date.now());
-    await interaction.reply({ content: 'Challenge beendet.', ephemeral: true });
+    await replyTemporary(interaction, { content: 'Challenge beendet.', ephemeral: true });
   }
 }
 
@@ -143,31 +144,31 @@ async function handleButton(interaction) {
   if (action === 'mine') {
     const state = store.getChallengeByMessageId(arg1);
     if (!state) {
-      await interaction.reply({ content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
       return;
     }
 
     const message = await fetchStoredMessage(state);
     const ended = await maybeApplyAutomaticEnds(state, message);
     if (ended) {
-      await interaction.reply({ content: 'Diese Challenge ist bereits beendet.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Diese Challenge ist bereits beendet.', ephemeral: true });
       return;
     }
 
     const team = findTeamForUser(state, interaction.user.id);
     if (!team) {
-      await interaction.reply({ content: 'Du bist in dieser Challenge in keinem Team.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Du bist in dieser Challenge in keinem Team.', ephemeral: true });
       return;
     }
 
-    await interaction.reply(buildMyTasksMenu(state, team.id, state.messageId));
+    await replyTemporary(interaction, buildMyTasksMenu(state, team.id, state.messageId));
     return;
   }
 
   if (action === 'refresh') {
     const state = store.getChallengeByMessageId(arg1);
     if (!state) {
-      await interaction.reply({ content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
       return;
     }
 
@@ -177,21 +178,21 @@ async function handleButton(interaction) {
       await message.edit(buildChallengeMessage(state));
       store.saveChallenge(state);
     }
-    await interaction.reply({ content: 'Status aktualisiert.', ephemeral: true });
+    await replyTemporary(interaction, { content: 'Status aktualisiert.', ephemeral: true });
     return;
   }
 
   if (action === 'cancel') {
     const state = store.getChallengeByMessageId(arg1);
     if (!state) {
-      await interaction.reply({ content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
       return;
     }
 
     requireCreatorOrAdmin(interaction, state);
     const message = await fetchStoredMessage(state);
     await finishChallenge(state, message, Date.now());
-    await interaction.reply({ content: 'Challenge beendet.', ephemeral: true });
+    await replyTemporary(interaction, { content: 'Challenge beendet.', ephemeral: true });
     return;
   }
 
@@ -203,7 +204,7 @@ async function handleButton(interaction) {
 async function startChallengeSetup(interaction) {
   const existing = store.getActiveChallengeByChannelId(interaction.channelId);
   if (existing) {
-    await interaction.reply({ content: 'In diesem Kanal läuft bereits eine Challenge.', ephemeral: true });
+    await replyTemporary(interaction, { content: 'In diesem Kanal läuft bereits eine Challenge.', ephemeral: true });
     return;
   }
 
@@ -237,7 +238,7 @@ async function handleSetupButton(interaction) {
     }
 
     if (value === 'tasks') {
-      await interaction.update(withoutEphemeral(buildTaskReviewPrompt(sessionId, session.tasks)));
+      await updateTemporary(interaction, withoutEphemeral(buildTaskReviewPrompt(sessionId, session.tasks)));
       return;
     }
 
@@ -258,7 +259,7 @@ async function handleSetupButton(interaction) {
 
     if (value === 'remove') {
       session.tasks.pop();
-      await interaction.update(withoutEphemeral(buildTaskReviewPrompt(realSessionId, session.tasks)));
+      await updateTemporary(interaction, withoutEphemeral(buildTaskReviewPrompt(realSessionId, session.tasks)));
       return;
     }
 
@@ -266,7 +267,7 @@ async function handleSetupButton(interaction) {
       if (session.tasks.length === 0) {
         throw new Error('Bitte mindestens eine Aufgabe anlegen.');
       }
-      await interaction.update(withoutEphemeral(buildNextModalPrompt(realSessionId, 'timing', 'Zeit einstellen')));
+      await updateTemporary(interaction, withoutEphemeral(buildNextModalPrompt(realSessionId, 'timing', 'Zeit einstellen')));
       return;
     }
   }
@@ -284,20 +285,20 @@ async function handleStringSelect(interaction) {
     const [, , messageId, teamId] = interaction.customId.split(':');
     const state = store.getChallengeByMessageId(messageId);
     if (!state) {
-      await interaction.reply({ content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
       return;
     }
 
     const message = await fetchStoredMessage(state);
     const ended = await maybeApplyAutomaticEnds(state, message);
     if (ended) {
-      await interaction.reply({ content: 'Diese Challenge ist bereits beendet.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Diese Challenge ist bereits beendet.', ephemeral: true });
       return;
     }
 
     const team = findTeamForUser(state, interaction.user.id);
     if (!team || team.id !== teamId) {
-      await interaction.reply({ content: 'Du kannst nur Aufgaben für dein eigenes Team abhaken.', ephemeral: true });
+      await replyTemporary(interaction, { content: 'Du kannst nur Aufgaben für dein eigenes Team abhaken.', ephemeral: true });
       return;
     }
 
@@ -316,7 +317,7 @@ async function handleStringSelect(interaction) {
       await postVotePrompt(state, message);
     }
 
-    await interaction.update(withoutEphemeral(buildMyTasksMenu(state, teamId, message.id)));
+    await updateTemporary(interaction, withoutEphemeral(buildMyTasksMenu(state, teamId, message.id)));
   }
 }
 
@@ -337,7 +338,7 @@ async function handleModal(interaction) {
       tasks: [],
       visibility: 'all'
     });
-    await interaction.reply(buildNextModalPrompt(newSessionId, 'mode', 'Teammodus auswählen'));
+    await replyTemporary(interaction, buildNextModalPrompt(newSessionId, 'mode', 'Teammodus auswählen'));
     return;
   }
 
@@ -346,11 +347,11 @@ async function handleModal(interaction) {
     session.teamMode = interaction.fields.getStringSelectValues('team_mode')[0];
 
     if (session.teamMode === 'random') {
-      await interaction.reply(buildNextModalPrompt(sessionId, 'randomplayers', 'Mitspieler auswählen'));
+      await replyTemporary(interaction, buildNextModalPrompt(sessionId, 'randomplayers', 'Mitspieler auswählen'));
       return;
     }
 
-    await interaction.reply(buildNextModalPrompt(sessionId, 'team', 'Team 1 auswählen', 0));
+    await replyTemporary(interaction, buildNextModalPrompt(sessionId, 'team', 'Team 1 auswählen', 0));
     return;
   }
 
@@ -358,7 +359,7 @@ async function handleModal(interaction) {
     const session = getSession(sessionId, interaction.user.id);
     const users = interaction.fields.getSelectedUsers('random_players', true);
     session.teams = distributeRandomTeams([...users.keys()], session.teamCount);
-    await interaction.reply(buildNextModalPrompt(sessionId, 'visibility', 'Sichtbarkeit auswählen'));
+    await replyTemporary(interaction, buildNextModalPrompt(sessionId, 'visibility', 'Sichtbarkeit auswählen'));
     return;
   }
 
@@ -371,11 +372,11 @@ async function handleModal(interaction) {
 
     const nextTeamIndex = teamIndex + 1;
     if (nextTeamIndex < teamSession.teamCount) {
-      await interaction.reply(buildNextModalPrompt(realSessionId, 'team', `Team ${nextTeamIndex + 1} auswählen`, nextTeamIndex));
+      await replyTemporary(interaction, buildNextModalPrompt(realSessionId, 'team', `Team ${nextTeamIndex + 1} auswählen`, nextTeamIndex));
       return;
     }
 
-    await interaction.reply(buildNextModalPrompt(realSessionId, 'visibility', 'Sichtbarkeit auswählen'));
+    await replyTemporary(interaction, buildNextModalPrompt(realSessionId, 'visibility', 'Sichtbarkeit auswählen'));
     return;
   }
 
@@ -383,7 +384,7 @@ async function handleModal(interaction) {
 
   if (step === 'visibility') {
     session.visibility = interaction.fields.getStringSelectValues('visibility')[0];
-    await interaction.reply(buildNextModalPrompt(sessionId, 'tasks', 'Aufgaben hinzufügen'));
+    await replyTemporary(interaction, buildNextModalPrompt(sessionId, 'tasks', 'Aufgaben hinzufügen'));
     return;
   }
 
@@ -395,7 +396,7 @@ async function handleModal(interaction) {
       b2b: interaction.fields.getCheckbox('b2b')
     });
     session.tasks.push(task);
-    await interaction.reply(buildTaskReviewPrompt(sessionId, session.tasks));
+    await replyTemporary(interaction, buildTaskReviewPrompt(sessionId, session.tasks));
     return;
   }
 
@@ -404,7 +405,7 @@ async function handleModal(interaction) {
     const timing = mode === 'limit'
       ? { type: 'limit', minutes: parsePositiveMinutes(interaction.fields.getTextInputValue('minutes')) }
       : { type: 'stopwatch' };
-    await interaction.reply({ content: 'Challenge wird gestartet...', ephemeral: true });
+    await replyTemporary(interaction, { content: 'Challenge wird gestartet...', ephemeral: true });
     await startChallengeFromSession(session, timing);
     await deleteReplyQuietly(interaction);
   }
@@ -413,7 +414,7 @@ async function handleModal(interaction) {
 async function handleVoteButton(interaction, messageId, choice) {
   const state = store.getChallengeByMessageId(messageId);
   if (!state) {
-    await interaction.reply({ content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
+    await replyTemporary(interaction, { content: 'Diese Challenge wurde nicht gefunden.', ephemeral: true });
     return;
   }
 
@@ -438,7 +439,7 @@ async function handleVoteButton(interaction, messageId, choice) {
 
   await message.edit(buildChallengeMessage(state));
   store.saveChallenge(state);
-  await interaction.reply({ content: `Stimme gezählt. Aktuell: ${result.endVotes} Beenden / ${result.continueVotes} Weiterspielen`, ephemeral: true });
+  await replyTemporary(interaction, { content: `Stimme gezählt. Aktuell: ${result.endVotes} Beenden / ${result.continueVotes} Weiterspielen`, ephemeral: true });
 }
 
 async function startChallengeFromSession(session, timing) {
@@ -805,13 +806,39 @@ async function deleteReplyQuietly(interaction) {
   }
 }
 
+function scheduleReplyDeletion(interaction, delay = TEMPORARY_REPLY_MS) {
+  const timer = setTimeout(() => {
+    deleteReplyQuietly(interaction).catch(() => {});
+  }, delay);
+  timer.unref?.();
+}
+
+async function replyTemporary(interaction, payload) {
+  await interaction.reply(payload);
+  scheduleReplyDeletion(interaction);
+}
+
+async function updateTemporary(interaction, payload) {
+  await interaction.update(payload);
+  scheduleReplyDeletion(interaction);
+}
+
 async function safeReply(interaction, content) {
   const payload = { content, ephemeral: true };
   if (interaction.deferred || interaction.replied) {
-    await interaction.followUp(payload).catch(console.error);
+    const message = await interaction.followUp({ ...payload, fetchReply: true }).catch((error) => {
+      console.error(error);
+      return null;
+    });
+    if (message) {
+      const timer = setTimeout(() => {
+        interaction.webhook.deleteMessage(message.id).catch(() => {});
+      }, TEMPORARY_REPLY_MS);
+      timer.unref?.();
+    }
     return;
   }
-  await interaction.reply(payload).catch(console.error);
+  await replyTemporary(interaction, payload).catch(console.error);
 }
 
 function withoutEphemeral(payload) {
