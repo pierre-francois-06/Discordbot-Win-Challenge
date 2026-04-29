@@ -7,6 +7,9 @@ const commands = [
     .setDescription('Postet das Win-Challenge Control Panel in diesem Kanal.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   new SlashCommandBuilder()
+    .setName('startchallenge')
+    .setDescription('Startet direkt eine neue Win-Challenge in diesem Kanal.'),
+  new SlashCommandBuilder()
     .setName('challenge_status')
     .setDescription('Aktualisiert die aktuelle Challenge-Nachricht in diesem Kanal.'),
   new SlashCommandBuilder()

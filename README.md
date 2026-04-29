@@ -311,7 +311,7 @@ Wichtig: Wenn du PowerShell schließt, stoppt der Bot. Für 24/7 nimm den Raspbe
 
 ## Teil F: Bot in Discord benutzen
 
-### 1. Control Panel erstellen
+### 1. Challenge-Zentrale erstellen
 
 Gehe in den Textkanal, in dem die Challenge laufen soll.
 
@@ -321,17 +321,23 @@ Schreibe:
 /setup
 ```
 
-Der Bot postet ein Control Panel mit `Neue Challenge`.
+Der Bot postet eine dauerhafte Challenge-Zentrale mit dem Button `Neue Challenge`.
 
 ### 2. Neue Challenge starten
 
-Klicke auf:
+Du hast zwei Möglichkeiten:
 
 ```text
 Neue Challenge
 ```
 
-Dann führt dich der Bot mit Popups durch das Setup. Discord nennt diese Popups auch `Modals`.
+oder direkt:
+
+```text
+/startchallenge
+```
+
+Beide Wege starten denselben Setup-Flow. Danach führt dich der Bot mit Popups durch das Setup. Discord nennt diese Popups auch `Modals`.
 
 ### 3. Setup-Schritte
 
@@ -663,13 +669,14 @@ Prüfe:
 - Inhalt hat keine Anführungszeichen
 - Keine Leerzeichen um `=`
 
-### Bot startet, aber `/setup` geht nicht
+### Bot startet, aber `/setup` oder `/startchallenge` geht nicht
 
 Prüfe:
 
 1. Wurde `npm.cmd run register` ausgeführt?
 2. Ist `GUILD_ID` die richtige Server-ID?
 3. Wurde der Bot auf genau diesen Server eingeladen?
+4. Nach Updates mit neuen Commands musst du `npm.cmd run register` erneut ausführen.
 
 ## Normale Reihenfolge für Windows
 

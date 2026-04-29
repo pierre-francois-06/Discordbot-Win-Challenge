@@ -84,6 +84,11 @@ async function handleCommand(interaction) {
     return;
   }
 
+  if (interaction.commandName === 'startchallenge') {
+    await startChallengeSetup(interaction);
+    return;
+  }
+
   if (interaction.commandName === 'challenge_status') {
     const state = store.getActiveChallengeByChannelId(interaction.channelId);
     if (!state) {
@@ -120,12 +125,7 @@ async function handleButton(interaction) {
   if (namespace !== 'wc') return;
 
   if (action === 'new') {
-    const existing = store.getActiveChallengeByChannelId(interaction.channelId);
-    if (existing) {
-      await interaction.reply({ content: 'In diesem Kanal läuft bereits eine Challenge.', ephemeral: true });
-      return;
-    }
-    await interaction.showModal(buildTeamCountModal());
+    await startChallengeSetup(interaction);
     return;
   }
 
@@ -192,6 +192,16 @@ async function handleButton(interaction) {
   if (action === 'vote') {
     await handleVoteButton(interaction, arg1, arg2);
   }
+}
+
+async function startChallengeSetup(interaction) {
+  const existing = store.getActiveChallengeByChannelId(interaction.channelId);
+  if (existing) {
+    await interaction.reply({ content: 'In diesem Kanal läuft bereits eine Challenge.', ephemeral: true });
+    return;
+  }
+
+  await interaction.showModal(buildTeamCountModal());
 }
 
 async function handleSetupButton(interaction, step, arg2, arg3) {
