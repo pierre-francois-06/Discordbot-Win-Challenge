@@ -246,7 +246,7 @@ function buildChallengeStatus(state) {
     const displayStart = now - getChallengeElapsedMs(state);
     const lines = [
         state.pausedAt
-            ? `Zeit: ${formatDuration(getChallengeElapsedMs(state))} (pausiert)`
+            ? `Start: ${formatDuration(getChallengeElapsedMs(state))} (pausiert)`
             : `Zeit: <t:${Math.floor(displayStart / 1000)}:R>`,
         `${mode} | ${visibility}`,
     ];
