@@ -690,4 +690,4 @@ sudo systemctl enable win-challenge-bot
 sudo systemctl start win-challenge-bot
 ```
 
-Danach laeuft der Bot automatisch im Hintergrund.
+Danach läuft der Bot automatisch im Hintergrund.
