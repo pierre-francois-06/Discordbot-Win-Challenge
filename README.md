@@ -401,6 +401,8 @@ Es bleibt nur die Siegerehrung sichtbar.
 
 Alte Siegerehrungen anderer Challenges werden nicht gelöscht.
 
+Private Discord-Antworten, die direkt beim Abschluss entstehen, werden ebenfalls entfernt. Ältere private Popup-/Weiter-Nachrichten kann Discord dem Bot später nicht immer als normale löschbare Nachricht geben; diese verschwinden clientseitig bzw. nach Discords eigener Zeit.
+
 ## Teil G: Raspberry Pi 24/7 Betrieb
 
 Das ist die beste Variante, damit du keine PowerShell offen lassen musst.

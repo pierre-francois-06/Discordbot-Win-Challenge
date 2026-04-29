@@ -290,8 +290,9 @@ async function handleStringSelect(interaction) {
     store.saveChallenge(state);
 
     if (result.allFinished) {
+      await interaction.deferUpdate();
       await finishChallenge(state, message, Date.now());
-      await interaction.update({ content: 'Alle Teams sind fertig. Challenge beendet.', embeds: [], components: [] });
+      await deleteReplyQuietly(interaction);
       return;
     }
 
@@ -367,6 +368,7 @@ async function handleModal(interaction) {
       : { type: 'stopwatch' };
     await interaction.reply({ content: 'Challenge wird gestartet...', ephemeral: true });
     await startChallengeFromSession(session, timing);
+    await deleteReplyQuietly(interaction);
   }
 }
 
@@ -715,6 +717,16 @@ async function deleteMessageQuietly(message) {
     await message.delete();
   } catch {
     // Ignore cleanup failures.
+  }
+}
+
+async function deleteReplyQuietly(interaction) {
+  try {
+    if (interaction.deferred || interaction.replied) {
+      await interaction.deleteReply();
+    }
+  } catch {
+    // Ephemeral interaction tokens can expire or be unavailable after Discord closes the response.
   }
 }
 
