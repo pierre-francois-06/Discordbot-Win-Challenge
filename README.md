@@ -26,14 +26,14 @@ Wichtig:
 
 ## Was ist was?
 
-| Begriff | Bedeutung |
-| --- | --- |
-| `DISCORD_TOKEN` | Das geheime Passwort deines Bots. Niemals teilen. |
-| `CLIENT_ID` | Die Application ID deiner Discord-App. |
-| `GUILD_ID` | Die Server-ID deines Discord-Servers. |
-| `.env` | Lokale Datei, in der Token und IDs stehen. |
-| Slash Command | Ein Discord-Befehl wie `/setup`. |
-| Raspberry Pi Service | Startet den Bot automatisch im Hintergrund. |
+| Begriff              | Bedeutung                                         |
+| -------------------- | ------------------------------------------------- |
+| `DISCORD_TOKEN`      | Das geheime Passwort deines Bots. Niemals teilen. |
+| `CLIENT_ID`          | Die Application ID deiner Discord-App.            |
+| `GUILD_ID`           | Die Server-ID deines Discord-Servers.             |
+| `.env`               | Lokale Datei, in der Token und IDs stehen.        |
+| Slash Command        | Ein Discord-Befehl wie `/setup`.                  |
+| Raspberry Pi Service | Startet den Bot automatisch im Hintergrund.       |
 
 ## Sehr wichtig: Token geheim halten
 
@@ -87,9 +87,9 @@ https://discord.com/developers/applications
 1. Klicke auf `New Application`.
 2. Gib einen Namen ein, z.B.:
 
-   ```text
-   Win Challenge Bot
-   ```
+    ```text
+    Win Challenge Bot
+    ```
 
 3. Bestaetige.
 
