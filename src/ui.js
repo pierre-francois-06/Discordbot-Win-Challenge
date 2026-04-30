@@ -41,6 +41,140 @@ function buildSetupPanel() {
     };
 }
 
+function buildSetupDashboard(session) {
+    const ready = isSetupReady(session);
+    const embed = new EmbedBuilder()
+        .setTitle("Challenge erstellen")
+        .setDescription(
+            ready
+                ? "Alles ist bereit. Starte die Challenge, wenn die Einstellungen passen."
+                : "Richte die Challenge hier ein. Buttons oeffnen nur dort Popups, wo Eingaben gebraucht werden.",
+        )
+        .setColor(ready ? 0x27ae60 : 0x2f80ed)
+        .addFields(
+            {
+                name: "Teams",
+                value: formatSetupTeams(session),
+                inline: false,
+            },
+            {
+                name: "Sichtbarkeit",
+                value:
+                    session.visibility === "own"
+                        ? "Nur eigenes Team sieht Details."
+                        : "Alle sehen alle Details.",
+                inline: true,
+            },
+            {
+                name: "Zeit",
+                value: formatSetupTiming(session),
+                inline: true,
+            },
+            {
+                name: "Aufgaben",
+                value: formatSetupTasks(session),
+                inline: false,
+            },
+        );
+
+    return {
+        embeds: [embed],
+        components: [
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:edit:teams:${session.id}`)
+                    .setLabel("Teams")
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:edit:visibility:${session.id}`)
+                    .setLabel("Sichtbarkeit")
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:edit:timing:${session.id}`)
+                    .setLabel("Zeit")
+                    .setStyle(ButtonStyle.Secondary),
+            ),
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:task:add:${session.id}`)
+                    .setLabel("Aufgabe hinzufuegen")
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:task:remove:${session.id}`)
+                    .setLabel("Letzte Aufgabe loeschen")
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(session.tasks.length === 0),
+            ),
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:start:${session.id}`)
+                    .setLabel("Challenge starten")
+                    .setStyle(ButtonStyle.Success)
+                    .setDisabled(!ready),
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:cancel:${session.id}`)
+                    .setLabel("Abbrechen")
+                    .setStyle(ButtonStyle.Danger),
+            ),
+        ],
+        ephemeral: true,
+    };
+}
+
+function isSetupReady(session) {
+    return (
+        Number.isInteger(session.teamCount) &&
+        session.teamCount >= 1 &&
+        session.teamMode &&
+        session.teams.length === session.teamCount &&
+        session.teams.every((team) => team?.userIds?.length > 0) &&
+        session.tasks.length > 0 &&
+        session.timing
+    );
+}
+
+function formatSetupTeams(session) {
+    if (!session.teamCount) return "Noch nicht eingerichtet.";
+    const mode =
+        session.teamMode === "random"
+            ? "zufaellig verteilt"
+            : session.teamMode === "manual"
+              ? "manuell ausgewaehlt"
+              : "Modus fehlt";
+    const lines = [`${session.teamCount} Team(s), ${mode}`];
+
+    for (let index = 0; index < session.teamCount; index += 1) {
+        const team = session.teams[index];
+        lines.push(
+            `Team ${index + 1}: ${
+                team?.userIds?.length
+                    ? team.userIds.map((id) => `<@${id}>`).join(", ")
+                    : "noch offen"
+            }`,
+        );
+    }
+
+    return truncate(lines.join("\n"), 1024);
+}
+
+function formatSetupTiming(session) {
+    if (!session.timing) return "Noch nicht eingestellt.";
+    if (session.timing.type === "limit") {
+        return `Zeitlimit: ${session.timing.minutes} Minuten`;
+    }
+    return "Zeit wird gezaehlt.";
+}
+
+function formatSetupTasks(session) {
+    if (session.tasks.length === 0) return "Noch keine Aufgabe angelegt.";
+    return truncate(
+        session.tasks
+            .map((task, index) => `${index + 1}. ${formatTaskLabel(task)}`)
+            .join("\n"),
+        1024,
+    );
+}
+
 function buildTeamCountPrompt() {
     return {
         content: "Setup Schritt 1: Wie viele Teams sollen mitspielen?",
@@ -458,6 +592,7 @@ function truncate(value, maxLength) {
 
 module.exports = {
     buildSetupPanel,
+    buildSetupDashboard,
     buildTeamCountPrompt,
     buildTeamUserPrompt,
     buildVisibilityPrompt,

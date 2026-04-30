@@ -34,9 +34,9 @@ const { createStore } = require("./store");
 const {
     buildChallengeMessage,
     buildMyTasksMenu,
+    buildSetupDashboard,
     buildSetupPanel,
     buildSummaryMessage,
-    buildTaskReviewPrompt,
     buildVoteMessage,
 } = require("./ui");
 
@@ -307,61 +307,68 @@ async function startChallengeSetup(interaction) {
         return;
     }
 
-    await interaction.showModal(buildTeamCountModal());
+    const session = createSession({
+        creatorId: interaction.user.id,
+        channelId: interaction.channelId,
+        teamCount: null,
+        teams: [],
+        teamMode: null,
+        tasks: [],
+        visibility: "all",
+        timing: null,
+    });
+    await interaction.reply(buildSetupDashboard(session));
 }
 
 async function handleSetupButton(interaction) {
     const [, , step, value, sessionId, extra] = interaction.customId.split(":");
 
-    if (step === "next") {
-        const session = getSession(sessionId, interaction.user.id);
+    const realSessionId =
+        step === "edit" || step === "task"
+            ? sessionId
+            : value;
+    const session = getSession(realSessionId, interaction.user.id);
 
-        if (value === "team") {
+    if (step === "edit") {
+        if (value === "teams") {
+            if (!session.teamCount) {
+                await interaction.showModal(buildTeamCountModal(realSessionId));
+                return;
+            }
+
+            if (!session.teamMode) {
+                await interaction.showModal(buildTeamModeModal(realSessionId));
+                return;
+            }
+
+            if (session.teamMode === "random") {
+                await interaction.showModal(
+                    buildRandomPlayersModal(realSessionId, session.teamCount),
+                );
+                return;
+            }
+
+            const teamIndex = findNextOpenTeamIndex(session);
             await interaction.showModal(
                 buildTeamUsersModal(
-                    sessionId,
-                    Number.parseInt(extra, 10),
+                    realSessionId,
+                    teamIndex,
                     session.teamCount,
                 ),
             );
             return;
         }
 
-        if (value === "mode") {
-            await interaction.showModal(buildTeamModeModal(sessionId));
-            return;
-        }
-
-        if (value === "randomplayers") {
-            await interaction.showModal(
-                buildRandomPlayersModal(sessionId, session.teamCount),
-            );
-            return;
-        }
-
         if (value === "visibility") {
-            await interaction.showModal(buildVisibilityModal(sessionId));
-            return;
-        }
-
-        if (value === "tasks") {
-            await updateTemporary(
-                interaction,
-                withoutEphemeral(
-                    buildTaskReviewPrompt(sessionId, session.tasks),
-                ),
-            );
+            await interaction.showModal(buildVisibilityModal(realSessionId));
             return;
         }
 
         if (value === "timing") {
-            await interaction.showModal(buildTimingModal(sessionId));
+            await interaction.showModal(buildTimingModal(realSessionId));
             return;
         }
     }
-
-    const realSessionId = step === "task" ? sessionId : value;
-    const session = getSession(realSessionId, interaction.user.id);
 
     if (step === "task") {
         if (value === "add") {
@@ -371,35 +378,30 @@ async function handleSetupButton(interaction) {
 
         if (value === "remove") {
             session.tasks.pop();
-            await updateTemporary(
-                interaction,
-                withoutEphemeral(
-                    buildTaskReviewPrompt(realSessionId, session.tasks),
-                ),
-            );
-            return;
-        }
-
-        if (value === "start") {
-            if (session.tasks.length === 0) {
-                throw new Error("Bitte mindestens eine Aufgabe anlegen.");
-            }
-            await updateTemporary(
-                interaction,
-                withoutEphemeral(
-                    buildNextModalPrompt(
-                        realSessionId,
-                        "timing",
-                        "Zeit einstellen",
-                    ),
-                ),
-            );
+            await updateSetupDashboard(interaction, session);
             return;
         }
     }
 
-    if (step === "timing") {
-        await interaction.showModal(buildTimingModal(realSessionId));
+    if (step === "start") {
+        assertSetupReady(session);
+        await interaction.update({
+            content: "Challenge wird gestartet...",
+            embeds: [],
+            components: [],
+        });
+        await startChallengeFromSession(session, session.timing);
+        await deleteReplyQuietly(interaction);
+        return;
+    }
+
+    if (step === "cancel") {
+        setupSessions.delete(realSessionId);
+        await interaction.update({
+            content: "Challenge-Setup abgebrochen.",
+            embeds: [],
+            components: [],
+        });
     }
 }
 
@@ -486,6 +488,19 @@ async function handleModal(interaction) {
     const [namespace, action, step, sessionId] =
         interaction.customId.split(":");
     if (namespace !== "wc" || action !== "setup") return;
+
+    if (
+        step === "count" ||
+        step === "mode" ||
+        step === "randomplayers" ||
+        step === "team" ||
+        step === "visibility" ||
+        step === "task" ||
+        step === "timing"
+    ) {
+        await handleDashboardModal(interaction, step, sessionId);
+        return;
+    }
 
     if (step === "count") {
         const teamCount = Number.parseInt(
@@ -629,6 +644,85 @@ async function handleModal(interaction) {
         });
         await startChallengeFromSession(session, timing);
         await deleteReplyQuietly(interaction);
+    }
+}
+
+async function handleDashboardModal(interaction, step, sessionId) {
+    if (step === "team") {
+        const teamIndex = Number.parseInt(sessionId, 10);
+        const realSessionId = interaction.customId.split(":")[4];
+        const session = getSession(realSessionId, interaction.user.id);
+        const users = interaction.fields.getSelectedUsers("team_users", true);
+        session.teams[teamIndex] = { userIds: [...users.keys()] };
+        await updateSetupDashboard(interaction, session);
+        return;
+    }
+
+    const session = getSession(sessionId, interaction.user.id);
+
+    if (step === "count") {
+        session.teamCount = Number.parseInt(
+            interaction.fields.getStringSelectValues("team_count")[0],
+            10,
+        );
+        session.teamMode = null;
+        session.teams = [];
+        await updateSetupDashboard(interaction, session);
+        return;
+    }
+
+    if (step === "mode") {
+        session.teamMode =
+            interaction.fields.getStringSelectValues("team_mode")[0];
+        session.teams = [];
+        await updateSetupDashboard(interaction, session);
+        return;
+    }
+
+    if (step === "randomplayers") {
+        const users = interaction.fields.getSelectedUsers(
+            "random_players",
+            true,
+        );
+        session.teams = distributeRandomTeams(
+            [...users.keys()],
+            session.teamCount,
+        );
+        await updateSetupDashboard(interaction, session);
+        return;
+    }
+
+    if (step === "visibility") {
+        session.visibility =
+            interaction.fields.getStringSelectValues("visibility")[0];
+        await updateSetupDashboard(interaction, session);
+        return;
+    }
+
+    if (step === "task") {
+        const task = createTask({
+            index: session.tasks.length,
+            title: interaction.fields.getTextInputValue("title"),
+            count: interaction.fields.getTextInputValue("count"),
+            b2b: interaction.fields.getCheckbox("b2b"),
+        });
+        session.tasks.push(task);
+        await updateSetupDashboard(interaction, session);
+        return;
+    }
+
+    if (step === "timing") {
+        const mode = interaction.fields.getStringSelectValues("timing_mode")[0];
+        session.timing =
+            mode === "limit"
+                ? {
+                      type: "limit",
+                      minutes: parsePositiveMinutes(
+                          interaction.fields.getTextInputValue("minutes"),
+                      ),
+                  }
+                : { type: "stopwatch" };
+        await updateSetupDashboard(interaction, session);
     }
 }
 
@@ -850,9 +944,9 @@ function buildTaskModal(sessionId) {
     return modal;
 }
 
-function buildTeamCountModal() {
+function buildTeamCountModal(sessionId) {
     return new ModalBuilder()
-        .setCustomId("wc:setup:count:new")
+        .setCustomId(`wc:setup:count:${sessionId}`)
         .setTitle("Teamanzahl")
         .addLabelComponents(
             new LabelBuilder()
@@ -1033,6 +1127,42 @@ function getSession(id, userId) {
         throw new Error("Nur der Ersteller kann dieses Setup fortsetzen.");
     }
     return session;
+}
+
+function findNextOpenTeamIndex(session) {
+    const index = session.teams.findIndex((team) => !team?.userIds?.length);
+    if (index !== -1) return index;
+    return 0;
+}
+
+function assertSetupReady(session) {
+    if (!Number.isInteger(session.teamCount) || session.teamCount < 1) {
+        throw new Error("Bitte richte zuerst die Teams ein.");
+    }
+    if (!session.teamMode) {
+        throw new Error("Bitte waehle zuerst den Teammodus.");
+    }
+    if (
+        session.teams.length !== session.teamCount ||
+        session.teams.some((team) => !team?.userIds?.length)
+    ) {
+        throw new Error("Bitte waehle zuerst alle Team-Mitspieler aus.");
+    }
+    if (session.tasks.length === 0) {
+        throw new Error("Bitte mindestens eine Aufgabe anlegen.");
+    }
+    if (!session.timing) {
+        throw new Error("Bitte stelle zuerst den Zeitmodus ein.");
+    }
+}
+
+async function updateSetupDashboard(interaction, session) {
+    const payload = withoutEphemeral(buildSetupDashboard(session));
+    if (typeof interaction.update === "function") {
+        await interaction.update(payload);
+        return;
+    }
+    await interaction.reply({ ...payload, ephemeral: true });
 }
 
 async function deleteMessageQuietly(message) {
