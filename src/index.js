@@ -307,7 +307,7 @@ async function startChallengeSetup(interaction) {
         return;
     }
 
-    const session = createSession({
+    const sessionId = createSession({
         creatorId: interaction.user.id,
         channelId: interaction.channelId,
         teamCount: null,
@@ -317,6 +317,7 @@ async function startChallengeSetup(interaction) {
         visibility: "all",
         timing: null,
     });
+    const session = getSession(sessionId, interaction.user.id);
     await interaction.reply(buildSetupDashboard(session));
 }
 
