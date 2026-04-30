@@ -16,7 +16,7 @@ const {
     TextInputStyle,
     UserSelectMenuBuilder,
 } = require("discord.js");
-const { createTask } = require("./tasks");
+const { createTask, formatTaskLabel } = require("./tasks");
 const { distributeRandomTeams } = require("./teams");
 const { parsePositiveMinutes } = require("./time");
 const {
@@ -25,10 +25,13 @@ const {
     createChallenge,
     endChallenge,
     findTeamForUser,
+    getOpenTasksForTeam,
+    getTaskProgress,
     markTasksComplete,
     pauseChallenge,
     resetTaskProgress,
     resumeChallenge,
+    isTaskComplete,
 } = require("./state");
 const { createStore } = require("./store");
 const {
@@ -189,10 +192,16 @@ async function handleButton(interaction) {
             return;
         }
 
-        await replyTemporary(
-            interaction,
-            buildMyTasksMenu(state, team.id, state.messageId),
-        );
+        const openTasks = getOpenTasksForTeam(state, team.id);
+        if (openTasks.length === 0) {
+            await replyTemporary(interaction, {
+                content: `${team.name} hat keine offenen Aufgaben mehr.`,
+                ephemeral: true,
+            });
+            return;
+        }
+
+        await interaction.showModal(buildMyTasksModal(state, team.id));
         return;
     }
 
@@ -488,6 +497,11 @@ async function handleUserSelect() {}
 async function handleModal(interaction) {
     const [namespace, action, step, sessionId] =
         interaction.customId.split(":");
+    if (namespace === "wc" && action === "tasks") {
+        await handleTasksModal(interaction, step, sessionId);
+        return;
+    }
+
     if (namespace !== "wc" || action !== "setup") return;
 
     if (
@@ -727,6 +741,74 @@ async function handleDashboardModal(interaction, step, sessionId) {
     }
 }
 
+async function handleTasksModal(interaction, messageId, teamId) {
+    const state = store.getChallengeByMessageId(messageId);
+    if (!state) {
+        await replyTemporary(interaction, {
+            content: "Diese Challenge wurde nicht gefunden.",
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const message = await fetchStoredMessage(state);
+    const ended = await maybeApplyAutomaticEnds(state, message);
+    if (ended) {
+        await replyTemporary(interaction, {
+            content: "Diese Challenge ist bereits beendet.",
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const team = findTeamForUser(state, interaction.user.id);
+    if (!team || team.id !== teamId) {
+        await replyTemporary(interaction, {
+            content: "Du kannst nur Aufgaben fuer dein eigenes Team abhaken.",
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const taskIds = interaction.fields.getStringSelectValues("task_ids");
+    const resetTaskIds = getOptionalStringSelectValues(
+        interaction,
+        "reset_task_ids",
+    );
+
+    for (const taskId of resetTaskIds) {
+        resetTaskProgress(state, teamId, taskId);
+    }
+
+    const result = markTasksComplete(state, teamId, taskIds, Date.now());
+    await message.edit(buildChallengeMessage(state));
+    store.saveChallenge(state);
+
+    if (result.allFinished) {
+        await interaction.deferReply({ ephemeral: true });
+        await finishChallenge(state, message, Date.now());
+        await deleteReplyQuietly(interaction);
+        return;
+    }
+
+    if (
+        state.vote?.status === "open" &&
+        result.teamFinished &&
+        state.firstFinishTeamId === teamId
+    ) {
+        await postVotePrompt(state, message);
+    }
+
+    const remainingTasks = getOpenTasksForTeam(state, teamId);
+    await replyTemporary(interaction, {
+        content:
+            remainingTasks.length > 0
+                ? "Aufgabe aktualisiert. Du kannst ueber `Meine Aufgaben` direkt die naechste Aufgabe abhaken."
+                : `${team.name} hat keine offenen Aufgaben mehr.`,
+        ephemeral: true,
+    });
+}
+
 async function handleVoteButton(interaction, messageId, choice) {
     const state = store.getChallengeByMessageId(messageId);
     if (!state) {
@@ -941,6 +1023,67 @@ function buildTaskModal(sessionId) {
                 new CheckboxBuilder().setCustomId("b2b").setDefault(false),
             ),
     );
+
+    return modal;
+}
+
+function buildMyTasksModal(state, teamId) {
+    const team = state.teams.find((entry) => entry.id === teamId);
+    const openTasks = getOpenTasksForTeam(state, teamId);
+    const resettableTasks = state.tasks.filter(
+        (task) =>
+            task.streak &&
+            getTaskProgress(team, task) > 0 &&
+            !isTaskComplete(team, task),
+    );
+
+    const modal = new ModalBuilder()
+        .setCustomId(`wc:tasks:${state.messageId}:${teamId}`)
+        .setTitle(`${team.name}: Aufgaben`);
+
+    modal.addLabelComponents(
+        new LabelBuilder()
+            .setLabel("Aufgabe abhaken")
+            .setStringSelectMenuComponent(
+                new StringSelectMenuBuilder()
+                    .setCustomId("task_ids")
+                    .setPlaceholder("Erledigte Aufgabe waehlen")
+                    .setMinValues(1)
+                    .setMaxValues(1)
+                    .addOptions(
+                        openTasks.map((task) => ({
+                            label: truncate(
+                                `${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
+                                100,
+                            ),
+                            value: task.id,
+                        })),
+                    ),
+            ),
+    );
+
+    if (resettableTasks.length > 0) {
+        modal.addLabelComponents(
+            new LabelBuilder()
+                .setLabel("BxB zuruecksetzen (optional)")
+                .setStringSelectMenuComponent(
+                    new StringSelectMenuBuilder()
+                        .setCustomId("reset_task_ids")
+                        .setPlaceholder("Optional: BxB-Aufgabe zuruecksetzen")
+                        .setMinValues(0)
+                        .setMaxValues(1)
+                        .addOptions(
+                            resettableTasks.map((task) => ({
+                                label: truncate(
+                                    `${formatTaskLabel(task)} zuruecksetzen (${formatTaskProgressForModal(team, task)})`,
+                                    100,
+                                ),
+                                value: task.id,
+                            })),
+                        ),
+                ),
+        );
+    }
 
     return modal;
 }
@@ -1164,6 +1307,23 @@ async function updateSetupDashboard(interaction, session) {
         return;
     }
     await interaction.reply({ ...payload, ephemeral: true });
+}
+
+function getOptionalStringSelectValues(interaction, customId) {
+    try {
+        return interaction.fields.getStringSelectValues(customId);
+    } catch {
+        return [];
+    }
+}
+
+function formatTaskProgressForModal(team, task) {
+    return `${getTaskProgress(team, task)}/${task.count}`;
+}
+
+function truncate(value, maxLength) {
+    if (value.length <= maxLength) return value;
+    return `${value.slice(0, maxLength - 3)}...`;
 }
 
 async function deleteMessageQuietly(message) {
