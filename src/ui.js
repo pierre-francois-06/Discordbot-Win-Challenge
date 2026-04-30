@@ -48,7 +48,7 @@ function buildSetupDashboard(session) {
         .setDescription(
             ready
                 ? "Alles ist bereit. Starte die Challenge, wenn die Einstellungen passen."
-                : "Richte die Challenge hier ein. Buttons oeffnen nur dort Popups, wo Eingaben gebraucht werden.",
+                : "Richte die Challenge hier ein. Buttons öffnen nur dort Popups, wo Eingaben gebraucht werden.",
         )
         .setColor(ready ? 0x27ae60 : 0x2f80ed)
         .addFields(
@@ -97,11 +97,11 @@ function buildSetupDashboard(session) {
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId(`wc:setup:task:add:${session.id}`)
-                    .setLabel("Aufgabe hinzufuegen")
+                    .setLabel("Aufgabe hinzufügen")
                     .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
                     .setCustomId(`wc:setup:task:remove:${session.id}`)
-                    .setLabel("Letzte Aufgabe loeschen")
+                    .setLabel("Letzte Aufgabe löschen")
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(session.tasks.length === 0),
             ),
@@ -137,9 +137,9 @@ function formatSetupTeams(session) {
     if (!session.teamCount) return "Noch nicht eingerichtet.";
     const mode =
         session.teamMode === "random"
-            ? "zufaellig verteilt"
+            ? "zufällig verteilt"
             : session.teamMode === "manual"
-              ? "manuell ausgewaehlt"
+              ? "manuell ausgewählt"
               : "Modus fehlt";
     const lines = [`${session.teamCount} Team(s), ${mode}`];
 
@@ -162,7 +162,7 @@ function formatSetupTiming(session) {
     if (session.timing.type === "limit") {
         return `Zeitlimit: ${session.timing.minutes} Minuten`;
     }
-    return "Zeit wird gezaehlt.";
+    return "Zeit wird gezählt.";
 }
 
 function formatSetupTasks(session) {

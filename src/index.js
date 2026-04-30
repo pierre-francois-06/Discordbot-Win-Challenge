@@ -118,10 +118,7 @@ async function handleCommand(interaction) {
             await message.edit(buildChallengeMessage(state));
             store.saveChallenge(state);
         }
-        await replyTemporary(interaction, {
-            content: `Status aktualisiert: ${message.url}`,
-            ephemeral: true,
-        });
+        await acknowledgeQuietly(interaction);
         return;
     }
 
@@ -140,10 +137,7 @@ async function handleCommand(interaction) {
         requireCreatorOrAdmin(interaction, state);
         const message = await fetchStoredMessage(state);
         await finishChallenge(state, message, Date.now());
-        await replyTemporary(interaction, {
-            content: "Challenge beendet.",
-            ephemeral: true,
-        });
+        await acknowledgeQuietly(interaction);
     }
 }
 
@@ -221,10 +215,7 @@ async function handleButton(interaction) {
             await message.edit(buildChallengeMessage(state));
             store.saveChallenge(state);
         }
-        await replyTemporary(interaction, {
-            content: "Status aktualisiert.",
-            ephemeral: true,
-        });
+        await acknowledgeQuietly(interaction);
         return;
     }
 
@@ -248,10 +239,7 @@ async function handleButton(interaction) {
         await message.edit(buildChallengeMessage(state));
         store.saveChallenge(state);
 
-        await replyTemporary(interaction, {
-            content: "Challenge pausiert.",
-            ephemeral: true,
-        });
+        await acknowledgeQuietly(interaction);
         return;
     }
 
@@ -274,10 +262,7 @@ async function handleButton(interaction) {
 
         scheduleTimeLimit(state, message);
 
-        await replyTemporary(interaction, {
-            content: "Challenge fortgesetzt.",
-            ephemeral: true,
-        });
+        await acknowledgeQuietly(interaction);
         return;
     }
 
@@ -294,10 +279,7 @@ async function handleButton(interaction) {
         requireCreatorOrAdmin(interaction, state);
         const message = await fetchStoredMessage(state);
         await finishChallenge(state, message, Date.now());
-        await replyTemporary(interaction, {
-            content: "Challenge beendet.",
-            ephemeral: true,
-        });
+        await acknowledgeQuietly(interaction);
         return;
     }
 
@@ -764,30 +746,31 @@ async function handleTasksModal(interaction, messageId, teamId) {
     const team = findTeamForUser(state, interaction.user.id);
     if (!team || team.id !== teamId) {
         await replyTemporary(interaction, {
-            content: "Du kannst nur Aufgaben fuer dein eigenes Team abhaken.",
+            content: "Du kannst nur Aufgaben für dein eigenes Team abhaken.",
             ephemeral: true,
         });
         return;
     }
 
-    const taskIds = interaction.fields.getStringSelectValues("task_ids");
-    const resetTaskIds = getOptionalStringSelectValues(
-        interaction,
-        "reset_task_ids",
-    );
+    const [selectedAction] =
+        interaction.fields.getStringSelectValues("task_action");
+    const [actionType, taskId] = selectedAction.split(":");
 
-    for (const taskId of resetTaskIds) {
+    if (actionType === "reset") {
         resetTaskProgress(state, teamId, taskId);
+        await message.edit(buildChallengeMessage(state));
+        store.saveChallenge(state);
+        await acknowledgeQuietly(interaction);
+        return;
     }
 
-    const result = markTasksComplete(state, teamId, taskIds, Date.now());
+    const result = markTasksComplete(state, teamId, [taskId], Date.now());
     await message.edit(buildChallengeMessage(state));
     store.saveChallenge(state);
 
     if (result.allFinished) {
-        await interaction.deferReply({ ephemeral: true });
+        await acknowledgeQuietly(interaction);
         await finishChallenge(state, message, Date.now());
-        await deleteReplyQuietly(interaction);
         return;
     }
 
@@ -799,14 +782,7 @@ async function handleTasksModal(interaction, messageId, teamId) {
         await postVotePrompt(state, message);
     }
 
-    const remainingTasks = getOpenTasksForTeam(state, teamId);
-    await replyTemporary(interaction, {
-        content:
-            remainingTasks.length > 0
-                ? "Aufgabe aktualisiert. Du kannst ueber `Meine Aufgaben` direkt die naechste Aufgabe abhaken."
-                : `${team.name} hat keine offenen Aufgaben mehr.`,
-        ephemeral: true,
-    });
+    await acknowledgeQuietly(interaction);
 }
 
 async function handleVoteButton(interaction, messageId, choice) {
@@ -833,21 +809,14 @@ async function handleVoteButton(interaction, messageId, choice) {
         clearVoteTimer(message.id);
         await message.edit(buildChallengeMessage(state));
         store.saveChallenge(state);
-        await interaction.update({
-            content: `Abstimmung beendet: Es wird weitergespielt. Stimmen: ${result.endVotes} Beenden / ${result.continueVotes} Weiterspielen`,
-            embeds: [],
-            components: [],
-        });
+        await acknowledgeQuietly(interaction);
         await deleteMessageQuietly(interaction.message);
         return;
     }
 
     await message.edit(buildChallengeMessage(state));
     store.saveChallenge(state);
-    await replyTemporary(interaction, {
-        content: `Stimme gezählt. Aktuell: ${result.endVotes} Beenden / ${result.continueVotes} Weiterspielen`,
-        ephemeral: true,
-    });
+    await acknowledgeQuietly(interaction);
 }
 
 async function startChallengeFromSession(session, timing) {
@@ -1043,49 +1012,39 @@ function buildMyTasksModal(state, teamId) {
 
     modal.addLabelComponents(
         new LabelBuilder()
-            .setLabel("Aufgabe abhaken")
+            .setLabel("Aktion auswählen")
             .setStringSelectMenuComponent(
                 new StringSelectMenuBuilder()
-                    .setCustomId("task_ids")
-                    .setPlaceholder("Erledigte Aufgabe waehlen")
+                    .setCustomId("task_action")
+                    .setPlaceholder("Aufgabe abhaken oder BxB zurücksetzen")
                     .setMinValues(1)
                     .setMaxValues(1)
                     .addOptions(
-                        openTasks.map((task) => ({
-                            label: truncate(
-                                `${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
-                                100,
-                            ),
-                            value: task.id,
-                        })),
+                        buildTaskActionOptions(openTasks, resettableTasks, team),
                     ),
             ),
     );
 
-    if (resettableTasks.length > 0) {
-        modal.addLabelComponents(
-            new LabelBuilder()
-                .setLabel("BxB zuruecksetzen (optional)")
-                .setStringSelectMenuComponent(
-                    new StringSelectMenuBuilder()
-                        .setCustomId("reset_task_ids")
-                        .setPlaceholder("Optional: BxB-Aufgabe zuruecksetzen")
-                        .setMinValues(0)
-                        .setMaxValues(1)
-                        .addOptions(
-                            resettableTasks.map((task) => ({
-                                label: truncate(
-                                    `${formatTaskLabel(task)} zuruecksetzen (${formatTaskProgressForModal(team, task)})`,
-                                    100,
-                                ),
-                                value: task.id,
-                            })),
-                        ),
-                ),
-        );
-    }
-
     return modal;
+}
+
+function buildTaskActionOptions(openTasks, resettableTasks, team) {
+    return [
+        ...openTasks.map((task) => ({
+            label: truncate(
+                `Abhaken: ${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
+                100,
+            ),
+            value: `complete:${task.id}`,
+        })),
+        ...resettableTasks.map((task) => ({
+            label: truncate(
+                `Zurücksetzen: ${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
+                100,
+            ),
+            value: `reset:${task.id}`,
+        })),
+    ];
 }
 
 function buildTeamCountModal(sessionId) {
@@ -1284,13 +1243,13 @@ function assertSetupReady(session) {
         throw new Error("Bitte richte zuerst die Teams ein.");
     }
     if (!session.teamMode) {
-        throw new Error("Bitte waehle zuerst den Teammodus.");
+        throw new Error("Bitte wähle zuerst den Teammodus.");
     }
     if (
         session.teams.length !== session.teamCount ||
         session.teams.some((team) => !team?.userIds?.length)
     ) {
-        throw new Error("Bitte waehle zuerst alle Team-Mitspieler aus.");
+        throw new Error("Bitte wähle zuerst alle Team-Mitspieler aus.");
     }
     if (session.tasks.length === 0) {
         throw new Error("Bitte mindestens eine Aufgabe anlegen.");
@@ -1309,12 +1268,14 @@ async function updateSetupDashboard(interaction, session) {
     await interaction.reply({ ...payload, ephemeral: true });
 }
 
-function getOptionalStringSelectValues(interaction, customId) {
-    try {
-        return interaction.fields.getStringSelectValues(customId);
-    } catch {
-        return [];
+async function acknowledgeQuietly(interaction) {
+    if (typeof interaction.deferUpdate === "function") {
+        await interaction.deferUpdate();
+        return;
     }
+
+    await interaction.deferReply({ ephemeral: true });
+    await deleteReplyQuietly(interaction);
 }
 
 function formatTaskProgressForModal(team, task) {
