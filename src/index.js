@@ -752,19 +752,27 @@ async function handleTasksModal(interaction, messageId, teamId) {
         return;
     }
 
-    const [selectedAction] =
-        interaction.fields.getStringSelectValues("task_action");
-    const [actionType, taskId] = selectedAction.split(":");
+    const [completeTaskId] = getOptionalStringSelectValues(
+        interaction,
+        "complete_task_id",
+    );
+    const [resetTaskId] = getOptionalStringSelectValues(
+        interaction,
+        "reset_task_id",
+    );
 
-    if (actionType === "reset") {
-        resetTaskProgress(state, teamId, taskId);
+    if (resetTaskId) {
+        resetTaskProgress(state, teamId, resetTaskId);
+    }
+
+    if (!completeTaskId) {
         await message.edit(buildChallengeMessage(state));
         store.saveChallenge(state);
         await acknowledgeQuietly(interaction);
         return;
     }
 
-    const result = markTasksComplete(state, teamId, [taskId], Date.now());
+    const result = markTasksComplete(state, teamId, [completeTaskId], Date.now());
     await message.edit(buildChallengeMessage(state));
     store.saveChallenge(state);
 
@@ -1012,39 +1020,51 @@ function buildMyTasksModal(state, teamId) {
 
     modal.addLabelComponents(
         new LabelBuilder()
-            .setLabel("Aktion auswählen")
+            .setLabel("Aufgabe abhaken")
             .setStringSelectMenuComponent(
                 new StringSelectMenuBuilder()
-                    .setCustomId("task_action")
-                    .setPlaceholder("Aufgabe abhaken oder BxB zurücksetzen")
-                    .setMinValues(1)
+                    .setCustomId("complete_task_id")
+                    .setPlaceholder("Erledigte Aufgabe wählen")
+                    .setRequired(false)
+                    .setMinValues(0)
                     .setMaxValues(1)
                     .addOptions(
-                        buildTaskActionOptions(openTasks, resettableTasks, team),
+                        openTasks.map((task) => ({
+                            label: truncate(
+                                `${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
+                                100,
+                            ),
+                            value: task.id,
+                        })),
                     ),
             ),
     );
 
-    return modal;
-}
+    if (resettableTasks.length > 0) {
+        modal.addLabelComponents(
+            new LabelBuilder()
+                .setLabel("BxB zurücksetzen")
+                .setStringSelectMenuComponent(
+                    new StringSelectMenuBuilder()
+                        .setCustomId("reset_task_id")
+                        .setPlaceholder("Optional: BxB-Aufgabe zurücksetzen")
+                        .setRequired(false)
+                        .setMinValues(0)
+                        .setMaxValues(1)
+                        .addOptions(
+                            resettableTasks.map((task) => ({
+                                label: truncate(
+                                    `${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
+                                    100,
+                                ),
+                                value: task.id,
+                            })),
+                        ),
+                ),
+        );
+    }
 
-function buildTaskActionOptions(openTasks, resettableTasks, team) {
-    return [
-        ...openTasks.map((task) => ({
-            label: truncate(
-                `Abhaken: ${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
-                100,
-            ),
-            value: `complete:${task.id}`,
-        })),
-        ...resettableTasks.map((task) => ({
-            label: truncate(
-                `Zurücksetzen: ${formatTaskLabel(task)} (${formatTaskProgressForModal(team, task)})`,
-                100,
-            ),
-            value: `reset:${task.id}`,
-        })),
-    ];
+    return modal;
 }
 
 function buildTeamCountModal(sessionId) {
@@ -1276,6 +1296,14 @@ async function acknowledgeQuietly(interaction) {
 
     await interaction.deferReply({ ephemeral: true });
     await deleteReplyQuietly(interaction);
+}
+
+function getOptionalStringSelectValues(interaction, customId) {
+    try {
+        return interaction.fields.getStringSelectValues(customId, false) || [];
+    } catch {
+        return [];
+    }
 }
 
 function formatTaskProgressForModal(team, task) {
