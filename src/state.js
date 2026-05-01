@@ -27,6 +27,7 @@ function createChallenge({
         timing,
         visibility,
         cleanupMessageIds: [],
+        tempVoiceChannelIds: [],
         teams: teams.map((team, index) => ({
             id: `team_${index + 1}`,
             name: `Team ${index + 1}`,
@@ -51,11 +52,7 @@ function findTeamForUser(state, userId) {
 function getOpenTasksForTeam(state, teamId) {
     const team = state.teams.find((entry) => entry.id === teamId);
     if (!team) return [];
-    const openTasks = state.tasks.filter((task) => !isTaskComplete(team, task));
-    if (state.challengeType === "first_try") {
-        return openTasks.slice(0, 1);
-    }
-    return openTasks;
+    return state.tasks.filter((task) => !isTaskComplete(team, task));
 }
 
 function isTeamComplete(state, team) {
@@ -72,15 +69,10 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
     const previousElapsedMs = getLastTeamElapsedMs(team);
     const taskDurationMs = elapsedMs - previousElapsedMs;
     const validTaskIds = new Set(state.tasks.map((task) => task.id));
-    const openTaskIds =
-        state.challengeType === "first_try"
-            ? new Set(getOpenTasksForTeam(state, teamId).map((task) => task.id))
-            : null;
     const changed = [];
 
     for (const taskId of taskIds) {
         if (!validTaskIds.has(taskId)) continue;
-        if (openTaskIds && !openTaskIds.has(taskId)) continue;
         const task = state.tasks.find((entry) => entry.id === taskId);
         if (!task || isTaskComplete(team, task)) continue;
 

@@ -4,6 +4,7 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
+    ChannelType,
     CheckboxBuilder,
     Client,
     Events,
@@ -906,6 +907,8 @@ async function startChallengeFromSession(session, timing) {
         visibility: session.visibility,
     });
 
+    await createTemporaryVoiceChannels(channel, state);
+
     const sent = await channel.send(buildChallengeMessage(state));
     state.messageId = sent.id;
     addCleanupMessage(state, sent.id);
@@ -913,6 +916,49 @@ async function startChallengeFromSession(session, timing) {
     store.saveChallenge(state);
     scheduleTimeLimit(state, sent);
     setupSessions.delete(session.id);
+}
+
+async function createTemporaryVoiceChannels(channel, state) {
+    if (!channel.guild) return;
+
+    state.tempVoiceChannelIds = [];
+    try {
+        for (const team of state.teams) {
+            const voiceChannel = await channel.guild.channels.create({
+                name: `Win Challenge - ${team.name}`,
+                type: ChannelType.GuildVoice,
+                parent: channel.parentId || undefined,
+                permissionOverwrites: [
+                    {
+                        id: channel.guild.roles.everyone.id,
+                        deny: [PermissionFlagsBits.ViewChannel],
+                    },
+                    {
+                        id: client.user.id,
+                        allow: [
+                            PermissionFlagsBits.ViewChannel,
+                            PermissionFlagsBits.ManageChannels,
+                        ],
+                    },
+                    ...team.userIds.map((userId) => ({
+                        id: userId,
+                        allow: [
+                            PermissionFlagsBits.ViewChannel,
+                            PermissionFlagsBits.Connect,
+                            PermissionFlagsBits.Speak,
+                        ],
+                    })),
+                ],
+                reason: `Temporärer Sprachkanal für ${team.name}`,
+            });
+
+            team.voiceChannelId = voiceChannel.id;
+            state.tempVoiceChannelIds.push(voiceChannel.id);
+        }
+    } catch (error) {
+        await cleanupTemporaryVoiceChannels(channel, state);
+        throw error;
+    }
 }
 
 async function postVotePrompt(state, message) {
@@ -1002,8 +1048,25 @@ async function finishChallenge(state, message, now) {
     const channel =
         message?.channel || (await client.channels.fetch(state.channelId));
     await channel.send(buildSummaryMessage(state));
+    await cleanupTemporaryVoiceChannels(channel, state);
     await cleanupChallengeMessages(channel, state);
     store.deleteChallenge(state.id);
+}
+
+async function cleanupTemporaryVoiceChannels(channel, state) {
+    const guild = channel.guild;
+    if (!guild) return;
+
+    for (const channelId of state.tempVoiceChannelIds || []) {
+        try {
+            const voiceChannel = await guild.channels.fetch(channelId);
+            await voiceChannel?.delete(
+                "Win Challenge beendet, temporärer Sprachkanal wird gelöscht.",
+            );
+        } catch {
+            // Channel may already be deleted or inaccessible.
+        }
+    }
 }
 
 async function cleanupChallengeMessages(channel, state) {

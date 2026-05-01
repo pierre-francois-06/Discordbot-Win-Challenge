@@ -420,6 +420,13 @@ function buildChallengeStatus(state) {
         `${challengeType} | ${mode} | ${visibility}`,
     ];
 
+    const voiceChannels = state.teams
+        .filter((team) => team.voiceChannelId)
+        .map((team) => `${team.name}: <#${team.voiceChannelId}>`);
+    if (voiceChannels.length > 0) {
+        lines.push(`Sprachkanäle: ${voiceChannels.join(" | ")}`);
+    }
+
     if (state.firstFinishTeamId && state.vote?.status === "open") {
         const firstTeam = state.teams.find(
             (team) => team.id === state.firstFinishTeamId,
@@ -482,7 +489,7 @@ function buildMyTasksMenu(state, teamId, publicMessageId) {
     return {
         content:
             state.challengeType === "first_try"
-                ? `${team.name}: Nächste Aufgabe. Bei Fehlversuch bitte den Button in der Challenge-Nachricht nutzen.`
+                ? `${team.name}: Welche Aufgabe möchtest du abhaken? Bei Fehlversuch bitte den Button in der Challenge-Nachricht nutzen.`
                 : `${team.name}: Welche Aufgabe möchtest du abhaken?`,
         embeds: [],
         components: [
