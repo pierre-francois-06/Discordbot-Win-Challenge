@@ -349,7 +349,31 @@ async function handleSetupButton(interaction) {
         }
 
         if (value === "teams") {
-            await interaction.showModal(buildTeamSettingsModal(realSessionId));
+            if (!session.teamCount) {
+                await interaction.showModal(buildTeamCountModal(realSessionId));
+                return;
+            }
+
+            if (!session.teamMode) {
+                await interaction.showModal(buildTeamModeModal(realSessionId));
+                return;
+            }
+
+            if (session.teamMode === "random") {
+                await interaction.showModal(
+                    buildRandomPlayersModal(realSessionId, session.teamCount),
+                );
+                return;
+            }
+
+            const teamIndex = findNextOpenTeamIndex(session);
+            await interaction.showModal(
+                buildTeamUsersModal(
+                    realSessionId,
+                    teamIndex,
+                    session.teamCount,
+                ),
+            );
             return;
         }
 
@@ -493,7 +517,6 @@ async function handleModal(interaction) {
         step === "mode" ||
         step === "randomplayers" ||
         step === "team" ||
-        step === "team_settings" ||
         step === "type" ||
         step === "visibility" ||
         step === "task" ||
@@ -651,34 +674,6 @@ async function handleModal(interaction) {
 }
 
 async function handleDashboardModal(interaction, step, sessionId) {
-    if (step === "team_settings") {
-        const session = getSession(sessionId, interaction.user.id);
-        const teamCount = Number.parseInt(
-            interaction.fields.getStringSelectValues("team_count")[0],
-            10,
-        );
-        const teams = [];
-
-        for (let index = 0; index < teamCount; index += 1) {
-            const users = getOptionalSelectedUsers(
-                interaction,
-                `team_${index + 1}_users`,
-            );
-            if (users.length === 0) {
-                throw new Error(
-                    `Bitte wähle mindestens einen User für Team ${index + 1}.`,
-                );
-            }
-            teams.push({ userIds: users });
-        }
-
-        session.teamCount = teamCount;
-        session.teamMode = "manual";
-        session.teams = teams;
-        await updateSetupSettingsMenu(interaction, session);
-        return;
-    }
-
     if (step === "team") {
         const teamIndex = Number.parseInt(sessionId, 10);
         const realSessionId = interaction.customId.split(":")[4];
@@ -1193,48 +1188,6 @@ function buildMyTasksModal(state, teamId) {
     return modal;
 }
 
-function buildTeamSettingsModal(sessionId) {
-    const modal = new ModalBuilder()
-        .setCustomId(`wc:setup:team_settings:${sessionId}`)
-        .setTitle("Teams einstellen");
-
-    modal.addLabelComponents(
-        new LabelBuilder()
-            .setLabel("Wie viele Teams?")
-            .setStringSelectMenuComponent(
-                new StringSelectMenuBuilder()
-                    .setCustomId("team_count")
-                    .setPlaceholder("Teamanzahl wählen")
-                    .addOptions(
-                        [1, 2, 3, 4].map((count) => ({
-                            label: `${count} Team${count === 1 ? "" : "s"}`,
-                            value: String(count),
-                        })),
-                    ),
-            ),
-    );
-
-    for (let index = 1; index <= 4; index += 1) {
-        modal.addLabelComponents(
-            new LabelBuilder()
-                .setLabel(`Team ${index}`)
-                .setDescription(
-                    "Nur ausfüllen, wenn diese Teamnummer genutzt wird.",
-                )
-                .setUserSelectMenuComponent(
-                    new UserSelectMenuBuilder()
-                        .setCustomId(`team_${index}_users`)
-                        .setPlaceholder(`User für Team ${index}`)
-                        .setRequired(false)
-                        .setMinValues(0)
-                        .setMaxValues(25),
-                ),
-        );
-    }
-
-    return modal;
-}
-
 function buildTeamCountModal(sessionId) {
     return new ModalBuilder()
         .setCustomId(`wc:setup:count:${sessionId}`)
@@ -1506,15 +1459,6 @@ async function acknowledgeQuietly(interaction) {
 function getOptionalStringSelectValues(interaction, customId) {
     try {
         return interaction.fields.getStringSelectValues(customId, false) || [];
-    } catch {
-        return [];
-    }
-}
-
-function getOptionalSelectedUsers(interaction, customId) {
-    try {
-        const users = interaction.fields.getSelectedUsers(customId, false);
-        return users ? [...users.keys()] : [];
     } catch {
         return [];
     }
