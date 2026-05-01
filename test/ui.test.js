@@ -45,6 +45,7 @@ test('setup dashboard shows missing setup state and blocks starting', () => {
     teamMode: null,
     teams: [],
     tasks: [],
+    challengeType: null,
     visibility: 'all',
     timing: null
   });
@@ -64,12 +65,14 @@ test('setup dashboard shows configured tasks and allows starting when complete',
     teamMode: 'manual',
     teams: [{ userIds: ['u1'] }, { userIds: ['u2'] }],
     tasks: [{ id: 'task_1', name: 'Game A', count: 3, streak: null }],
+    challengeType: 'first_try',
     visibility: 'own',
     timing: { type: 'limit', minutes: 90 }
   });
   const serialized = JSON.stringify(payload);
 
   assert.match(serialized, /Game A x3/);
+  assert.match(serialized, /First-Try Winchallenge/);
   assert.match(serialized, /Nur eigenes Team/);
   assert.match(serialized, /Zeitlimit: 90 Minuten/);
   assert.doesNotMatch(serialized, /"custom_id":"wc:setup:start:session","label":"Challenge starten","style":3,"disabled":true/);

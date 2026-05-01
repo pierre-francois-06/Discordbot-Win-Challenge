@@ -30,6 +30,7 @@ const {
     markTasksComplete,
     pauseChallenge,
     resetTaskProgress,
+    resetTeamProgress,
     resumeChallenge,
     isTaskComplete,
 } = require("./state");
@@ -285,6 +286,11 @@ async function handleButton(interaction) {
 
     if (action === "vote") {
         await handleVoteButton(interaction, arg1, arg2);
+        return;
+    }
+
+    if (action === "fail") {
+        await handleFirstTryFailure(interaction, arg1);
     }
 }
 
@@ -305,6 +311,7 @@ async function startChallengeSetup(interaction) {
         teams: [],
         teamMode: null,
         tasks: [],
+        challengeType: null,
         visibility: "all",
         timing: null,
     });
@@ -322,6 +329,11 @@ async function handleSetupButton(interaction) {
     const session = getSession(realSessionId, interaction.user.id);
 
     if (step === "edit") {
+        if (value === "type") {
+            await interaction.showModal(buildChallengeTypeModal(realSessionId));
+            return;
+        }
+
         if (value === "teams") {
             if (!session.teamCount) {
                 await interaction.showModal(buildTeamCountModal(realSessionId));
@@ -491,6 +503,7 @@ async function handleModal(interaction) {
         step === "mode" ||
         step === "randomplayers" ||
         step === "team" ||
+        step === "type" ||
         step === "visibility" ||
         step === "task" ||
         step === "timing"
@@ -511,6 +524,7 @@ async function handleModal(interaction) {
             teams: [],
             teamMode: null,
             tasks: [],
+            challengeType: null,
             visibility: "all",
         });
         await replyTemporary(
@@ -696,6 +710,13 @@ async function handleDashboardModal(interaction, step, sessionId) {
         return;
     }
 
+    if (step === "type") {
+        session.challengeType =
+            interaction.fields.getStringSelectValues("challenge_type")[0];
+        await updateSetupDashboard(interaction, session);
+        return;
+    }
+
     if (step === "task") {
         const task = createTask({
             index: session.tasks.length,
@@ -793,6 +814,52 @@ async function handleTasksModal(interaction, messageId, teamId) {
     await acknowledgeQuietly(interaction);
 }
 
+async function handleFirstTryFailure(interaction, messageId) {
+    const state = store.getChallengeByMessageId(messageId);
+    if (!state) {
+        await replyTemporary(interaction, {
+            content: "Diese Challenge wurde nicht gefunden.",
+            ephemeral: true,
+        });
+        return;
+    }
+
+    if (state.challengeType !== "first_try") {
+        await replyTemporary(interaction, {
+            content: "Fehlversuche gibt es nur in First-Try-Challenges.",
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const message = await fetchStoredMessage(state);
+    const ended = await maybeApplyAutomaticEnds(state, message);
+    if (ended) {
+        await replyTemporary(interaction, {
+            content: "Diese Challenge ist bereits beendet.",
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const team = findTeamForUser(state, interaction.user.id);
+    if (!team) {
+        await replyTemporary(interaction, {
+            content: "Du bist in dieser Challenge in keinem Team.",
+            ephemeral: true,
+        });
+        return;
+    }
+
+    resetTeamProgress(state, team.id);
+    await message.edit(buildChallengeMessage(state));
+    store.saveChallenge(state);
+    await replyTemporary(interaction, {
+        content: `${team.name} startet wieder bei Aufgabe 1.`,
+        ephemeral: true,
+    });
+}
+
 async function handleVoteButton(interaction, messageId, choice) {
     const state = store.getChallengeByMessageId(messageId);
     if (!state) {
@@ -834,6 +901,7 @@ async function startChallengeFromSession(session, timing) {
         creatorId: session.creatorId,
         teams: session.teams,
         tasks: session.tasks,
+        challengeType: session.challengeType,
         timing,
         visibility: session.visibility,
     });
@@ -1130,6 +1198,31 @@ function buildTeamModeModal(sessionId) {
         );
 }
 
+function buildChallengeTypeModal(sessionId) {
+    return new ModalBuilder()
+        .setCustomId(`wc:setup:type:${sessionId}`)
+        .setTitle("Challenge-Art")
+        .addLabelComponents(
+            new LabelBuilder()
+                .setLabel("Welche Challenge-Art?")
+                .setStringSelectMenuComponent(
+                    new StringSelectMenuBuilder()
+                        .setCustomId("challenge_type")
+                        .setPlaceholder("Challenge-Art wählen")
+                        .addOptions(
+                            {
+                                label: "Standard Winchallenge",
+                                value: "standard",
+                            },
+                            {
+                                label: "First-Try Winchallenge",
+                                value: "first_try",
+                            },
+                        ),
+                ),
+        );
+}
+
 function buildRandomPlayersModal(sessionId, teamCount) {
     return new ModalBuilder()
         .setCustomId(`wc:setup:randomplayers:${sessionId}`)
@@ -1264,6 +1357,9 @@ function assertSetupReady(session) {
     }
     if (!session.teamMode) {
         throw new Error("Bitte wähle zuerst den Teammodus.");
+    }
+    if (!session.challengeType) {
+        throw new Error("Bitte wähle zuerst die Challenge-Art.");
     }
     if (
         session.teams.length !== session.teamCount ||

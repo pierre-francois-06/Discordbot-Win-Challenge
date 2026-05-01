@@ -6,6 +6,7 @@ function createChallenge({
     teams,
     tasks,
     timing,
+    challengeType = "standard",
     visibility = "all",
     now = Date.now(),
 }) {
@@ -22,6 +23,7 @@ function createChallenge({
         endedAt: null,
         pausedAt: null,
         totalPausedMs: 0,
+        challengeType,
         timing,
         visibility,
         cleanupMessageIds: [],
@@ -49,7 +51,11 @@ function findTeamForUser(state, userId) {
 function getOpenTasksForTeam(state, teamId) {
     const team = state.teams.find((entry) => entry.id === teamId);
     if (!team) return [];
-    return state.tasks.filter((task) => !isTaskComplete(team, task));
+    const openTasks = state.tasks.filter((task) => !isTaskComplete(team, task));
+    if (state.challengeType === "first_try") {
+        return openTasks.slice(0, 1);
+    }
+    return openTasks;
 }
 
 function isTeamComplete(state, team) {
@@ -66,10 +72,15 @@ function markTasksComplete(state, teamId, taskIds, now = Date.now()) {
     const previousElapsedMs = getLastTeamElapsedMs(team);
     const taskDurationMs = elapsedMs - previousElapsedMs;
     const validTaskIds = new Set(state.tasks.map((task) => task.id));
+    const openTaskIds =
+        state.challengeType === "first_try"
+            ? new Set(getOpenTasksForTeam(state, teamId).map((task) => task.id))
+            : null;
     const changed = [];
 
     for (const taskId of taskIds) {
         if (!validTaskIds.has(taskId)) continue;
+        if (openTaskIds && !openTaskIds.has(taskId)) continue;
         const task = state.tasks.find((entry) => entry.id === taskId);
         if (!task || isTaskComplete(team, task)) continue;
 
@@ -138,6 +149,21 @@ function resetTaskProgress(state, teamId, taskId) {
 
     delete team.completed[taskId];
     return { state, task };
+}
+
+function resetTeamProgress(state, teamId) {
+    const team = state.teams.find((entry) => entry.id === teamId);
+    if (!team) {
+        throw new Error("Team wurde nicht gefunden.");
+    }
+
+    team.completed = {};
+    team.finishedAt = null;
+    if (state.firstFinishTeamId === teamId) {
+        state.firstFinishTeamId = null;
+        state.vote = null;
+    }
+    return { state, team };
 }
 
 function getLastTeamElapsedMs(team) {
@@ -307,6 +333,7 @@ module.exports = {
     isTaskComplete,
     markTasksComplete,
     resetTaskProgress,
+    resetTeamProgress,
     addCleanupMessage,
     castVote,
     countVotes,

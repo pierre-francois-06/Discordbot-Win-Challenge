@@ -53,6 +53,11 @@ function buildSetupDashboard(session) {
         .setColor(ready ? 0x27ae60 : 0x2f80ed)
         .addFields(
             {
+                name: "Art",
+                value: formatSetupChallengeType(session),
+                inline: true,
+            },
+            {
                 name: "Teams",
                 value: formatSetupTeams(session),
                 inline: false,
@@ -81,6 +86,10 @@ function buildSetupDashboard(session) {
         embeds: [embed],
         components: [
             new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:edit:type:${session.id}`)
+                    .setLabel("Art")
+                    .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
                     .setCustomId(`wc:setup:edit:teams:${session.id}`)
                     .setLabel("Teams")
@@ -122,15 +131,23 @@ function buildSetupDashboard(session) {
 }
 
 function isSetupReady(session) {
-    return (
+    return Boolean(
         Number.isInteger(session.teamCount) &&
-        session.teamCount >= 1 &&
-        session.teamMode &&
-        session.teams.length === session.teamCount &&
-        session.teams.every((team) => team?.userIds?.length > 0) &&
-        session.tasks.length > 0 &&
-        session.timing
+            session.challengeType &&
+            session.teamCount >= 1 &&
+            session.teamMode &&
+            session.teams.length === session.teamCount &&
+            session.teams.every((team) => team?.userIds?.length > 0) &&
+            session.tasks.length > 0 &&
+            session.timing,
     );
+}
+
+function formatSetupChallengeType(session) {
+    if (session.challengeType === "standard") return "Standard Winchallenge";
+    if (session.challengeType === "first_try")
+        return "First-Try Winchallenge";
+    return "Noch nicht ausgewählt.";
 }
 
 function formatSetupTeams(session) {
@@ -324,6 +341,48 @@ function buildTimingPrompt(sessionId) {
 }
 
 function buildChallengeMessage(state) {
+    const controlButtons = [
+        new ButtonBuilder()
+            .setCustomId(`wc:mine:${state.messageId || "pending"}`)
+            .setLabel("Meine Aufgaben")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(state.status === "ended"),
+        new ButtonBuilder()
+            .setCustomId(`wc:refresh:${state.messageId || "pending"}`)
+            .setLabel("Status aktualisieren")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(state.status === "ended"),
+    ];
+
+    if (state.challengeType === "first_try") {
+        controlButtons.push(
+            new ButtonBuilder()
+                .setCustomId(`wc:fail:${state.messageId || "pending"}`)
+                .setLabel("Fehlversuch")
+                .setStyle(ButtonStyle.Danger)
+                .setDisabled(state.status === "ended"),
+        );
+    }
+
+    controlButtons.push(
+        new ButtonBuilder()
+            .setCustomId(
+                `wc:${state.pausedAt ? "resume" : "pause"}:${state.messageId || "pending"}`,
+            )
+            .setLabel(
+                state.pausedAt ? "Challenge fortsetzen" : "Challenge pausieren",
+            )
+            .setStyle(
+                state.pausedAt ? ButtonStyle.Success : ButtonStyle.Secondary,
+            )
+            .setDisabled(state.status === "ended"),
+        new ButtonBuilder()
+            .setCustomId(`wc:cancel:${state.messageId || "pending"}`)
+            .setLabel("Challenge beenden")
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(state.status === "ended"),
+    );
+
     const embed = new EmbedBuilder()
         .setTitle("Win Challenge läuft")
         .setColor(state.status === "ended" ? 0x828282 : 0x27ae60)
@@ -334,38 +393,7 @@ function buildChallengeMessage(state) {
     return {
         embeds: [embed],
         components: [
-            new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`wc:mine:${state.messageId || "pending"}`)
-                    .setLabel("Meine Aufgaben")
-                    .setStyle(ButtonStyle.Primary)
-                    .setDisabled(state.status === "ended"),
-                new ButtonBuilder()
-                    .setCustomId(`wc:refresh:${state.messageId || "pending"}`)
-                    .setLabel("Status aktualisieren")
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(state.status === "ended"),
-                new ButtonBuilder()
-                    .setCustomId(
-                        `wc:${state.pausedAt ? "resume" : "pause"}:${state.messageId || "pending"}`,
-                    )
-                    .setLabel(
-                        state.pausedAt
-                            ? "Challenge fortsetzen"
-                            : "Challenge pausieren",
-                    )
-                    .setStyle(
-                        state.pausedAt
-                            ? ButtonStyle.Success
-                            : ButtonStyle.Secondary,
-                    )
-                    .setDisabled(state.status === "ended"),
-                new ButtonBuilder()
-                    .setCustomId(`wc:cancel:${state.messageId || "pending"}`)
-                    .setLabel("Challenge beenden")
-                    .setStyle(ButtonStyle.Danger)
-                    .setDisabled(state.status === "ended"),
-            ),
+            new ActionRowBuilder().addComponents(controlButtons),
         ],
     };
 }
@@ -379,13 +407,17 @@ function buildChallengeStatus(state) {
         state.visibility === "own"
             ? "Gegnerdetails: privat"
             : "Gegnerdetails: sichtbar";
+    const challengeType =
+        state.challengeType === "first_try"
+            ? "Art: First-Try Winchallenge"
+            : "Art: Standard Winchallenge";
     const now = state.pausedAt ? state.pausedAt : Date.now();
     const displayStart = now - getChallengeElapsedMs(state);
     const lines = [
         state.pausedAt
             ? `Zeit: ${formatDuration(getChallengeElapsedMs(state))} (pausiert)`
             : `Start: <t:${Math.floor(displayStart / 1000)}:R>`,
-        `${mode} | ${visibility}`,
+        `${challengeType} | ${mode} | ${visibility}`,
     ];
 
     if (state.firstFinishTeamId && state.vote?.status === "open") {
@@ -448,7 +480,10 @@ function buildMyTasksMenu(state, teamId, publicMessageId) {
     }
 
     return {
-        content: `${team.name}: Welche Aufgabe möchtest du abhaken?`,
+        content:
+            state.challengeType === "first_try"
+                ? `${team.name}: Nächste Aufgabe. Bei Fehlversuch bitte den Button in der Challenge-Nachricht nutzen.`
+                : `${team.name}: Welche Aufgabe möchtest du abhaken?`,
         embeds: [],
         components: [
             new ActionRowBuilder().addComponents(

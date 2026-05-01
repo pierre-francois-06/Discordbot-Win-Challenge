@@ -10,6 +10,7 @@ const {
     getWinnerTeam,
     markTasksComplete,
     resetTaskProgress,
+    resetTeamProgress,
 } = require("../src/state");
 
 function sampleState() {
@@ -80,6 +81,33 @@ test("resetTaskProgress resets unfinished BxB progress", () => {
 
     resetTaskProgress(state, "team_1", "task_2");
     assert.equal(getTaskProgress(state.teams[0], state.tasks[1]), 0);
+});
+
+test("first try challenge only offers the next task in order", () => {
+    const state = sampleState();
+    state.challengeType = "first_try";
+
+    assert.deepEqual(getOpenTasksForTeam(state, "team_1"), [state.tasks[0]]);
+
+    let result = markTasksComplete(state, "team_1", ["task_2"], 61000);
+    assert.deepEqual(result.changed, []);
+    assert.equal(getTaskProgress(state.teams[0], state.tasks[1]), 0);
+
+    result = markTasksComplete(state, "team_1", ["task_1"], 61000);
+    assert.deepEqual(result.changed, ["task_1"]);
+    assert.deepEqual(getOpenTasksForTeam(state, "team_1"), [state.tasks[1]]);
+});
+
+test("resetTeamProgress restarts a first try team from the beginning", () => {
+    const state = sampleState();
+    state.challengeType = "first_try";
+
+    markTasksComplete(state, "team_1", ["task_1"], 61000);
+    assert.equal(getTaskProgress(state.teams[0], state.tasks[0]), 1);
+
+    resetTeamProgress(state, "team_1");
+    assert.equal(getTaskProgress(state.teams[0], state.tasks[0]), 0);
+    assert.deepEqual(getOpenTasksForTeam(state, "team_1"), [state.tasks[0]]);
 });
 
 test("markTasksComplete detects first finisher and winner", () => {
