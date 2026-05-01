@@ -40,6 +40,7 @@ const {
     buildChallengeMessage,
     buildMyTasksMenu,
     buildSetupDashboard,
+    buildSetupSettingsMenu,
     buildSetupPanel,
     buildSummaryMessage,
     buildVoteMessage,
@@ -312,9 +313,9 @@ async function startChallengeSetup(interaction) {
         teams: [],
         teamMode: null,
         tasks: [],
-        challengeType: null,
+        challengeType: "standard",
         visibility: "all",
-        timing: null,
+        timing: { type: "stopwatch" },
     });
     const session = getSession(sessionId, interaction.user.id);
     await interaction.reply(buildSetupDashboard(session));
@@ -328,6 +329,18 @@ async function handleSetupButton(interaction) {
             ? sessionId
             : value;
     const session = getSession(realSessionId, interaction.user.id);
+
+    if (step === "settings") {
+        await interaction.update(
+            withoutEphemeral(buildSetupSettingsMenu(session)),
+        );
+        return;
+    }
+
+    if (step === "back") {
+        await interaction.update(withoutEphemeral(buildSetupDashboard(session)));
+        return;
+    }
 
     if (step === "edit") {
         if (value === "type") {
@@ -383,7 +396,7 @@ async function handleSetupButton(interaction) {
 
         if (value === "remove") {
             session.tasks.pop();
-            await updateSetupDashboard(interaction, session);
+            await updateSetupSettingsMenu(interaction, session);
             return;
         }
     }
@@ -525,8 +538,9 @@ async function handleModal(interaction) {
             teams: [],
             teamMode: null,
             tasks: [],
-            challengeType: null,
+            challengeType: "standard",
             visibility: "all",
+            timing: { type: "stopwatch" },
         });
         await replyTemporary(
             interaction,
@@ -666,7 +680,7 @@ async function handleDashboardModal(interaction, step, sessionId) {
         const session = getSession(realSessionId, interaction.user.id);
         const users = interaction.fields.getSelectedUsers("team_users", true);
         session.teams[teamIndex] = { userIds: [...users.keys()] };
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
         return;
     }
 
@@ -679,7 +693,7 @@ async function handleDashboardModal(interaction, step, sessionId) {
         );
         session.teamMode = null;
         session.teams = [];
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
         return;
     }
 
@@ -687,7 +701,7 @@ async function handleDashboardModal(interaction, step, sessionId) {
         session.teamMode =
             interaction.fields.getStringSelectValues("team_mode")[0];
         session.teams = [];
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
         return;
     }
 
@@ -700,21 +714,21 @@ async function handleDashboardModal(interaction, step, sessionId) {
             [...users.keys()],
             session.teamCount,
         );
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
         return;
     }
 
     if (step === "visibility") {
         session.visibility =
             interaction.fields.getStringSelectValues("visibility")[0];
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
         return;
     }
 
     if (step === "type") {
         session.challengeType =
             interaction.fields.getStringSelectValues("challenge_type")[0];
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
         return;
     }
 
@@ -726,7 +740,7 @@ async function handleDashboardModal(interaction, step, sessionId) {
             b2b: interaction.fields.getCheckbox("b2b"),
         });
         session.tasks.push(task);
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
         return;
     }
 
@@ -741,7 +755,7 @@ async function handleDashboardModal(interaction, step, sessionId) {
                       ),
                   }
                 : { type: "stopwatch" };
-        await updateSetupDashboard(interaction, session);
+        await updateSetupSettingsMenu(interaction, session);
     }
 }
 
@@ -1416,6 +1430,15 @@ function assertSetupReady(session) {
 
 async function updateSetupDashboard(interaction, session) {
     const payload = withoutEphemeral(buildSetupDashboard(session));
+    if (typeof interaction.update === "function") {
+        await interaction.update(payload);
+        return;
+    }
+    await interaction.reply({ ...payload, ephemeral: true });
+}
+
+async function updateSetupSettingsMenu(interaction, session) {
+    const payload = withoutEphemeral(buildSetupSettingsMenu(session));
     if (typeof interaction.update === "function") {
         await interaction.update(payload);
         return;

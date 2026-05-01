@@ -48,6 +48,70 @@ function buildSetupDashboard(session) {
         .setDescription(
             ready
                 ? "Alles ist bereit. Starte die Challenge, wenn die Einstellungen passen."
+                : "Teams und Aufgaben fehlen noch. Standardwerte sind bereits gesetzt.",
+        )
+        .setColor(ready ? 0x27ae60 : 0x2f80ed)
+        .addFields(
+            {
+                name: "Art",
+                value: formatSetupChallengeType(session),
+                inline: true,
+            },
+            {
+                name: "Zeit",
+                value: formatSetupTiming(session),
+                inline: true,
+            },
+            {
+                name: "Sichtbarkeit",
+                value:
+                    session.visibility === "own"
+                        ? "Nur eigenes Team sieht Details."
+                        : "Alle sehen alle Details.",
+                inline: true,
+            },
+            {
+                name: "Teams",
+                value: formatSetupTeams(session),
+                inline: false,
+            },
+            {
+                name: "Aufgaben",
+                value: formatSetupTasks(session),
+                inline: false,
+            },
+        );
+
+    return {
+        embeds: [embed],
+        components: [
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:settings:${session.id}`)
+                    .setLabel("Einstellungen")
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:start:${session.id}`)
+                    .setLabel("Challenge starten")
+                    .setStyle(ButtonStyle.Success)
+                    .setDisabled(!ready),
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:cancel:${session.id}`)
+                    .setLabel("Abbrechen")
+                    .setStyle(ButtonStyle.Danger),
+            ),
+        ],
+        ephemeral: true,
+    };
+}
+
+function buildSetupSettingsMenu(session) {
+    const ready = isSetupReady(session);
+    const embed = new EmbedBuilder()
+        .setTitle("Einstellungen")
+        .setDescription(
+            ready
+                ? "Alles ist bereit. Starte die Challenge, wenn die Einstellungen passen."
                 : "Richte die Challenge hier ein. Buttons öffnen nur dort Popups, wo Eingaben gebraucht werden.",
         )
         .setColor(ready ? 0x27ae60 : 0x2f80ed)
@@ -115,6 +179,10 @@ function buildSetupDashboard(session) {
                     .setDisabled(session.tasks.length === 0),
             ),
             new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`wc:setup:back:${session.id}`)
+                    .setLabel("Zurück")
+                    .setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder()
                     .setCustomId(`wc:setup:start:${session.id}`)
                     .setLabel("Challenge starten")
@@ -635,6 +703,7 @@ function truncate(value, maxLength) {
 module.exports = {
     buildSetupPanel,
     buildSetupDashboard,
+    buildSetupSettingsMenu,
     buildTeamCountPrompt,
     buildTeamUserPrompt,
     buildVisibilityPrompt,
