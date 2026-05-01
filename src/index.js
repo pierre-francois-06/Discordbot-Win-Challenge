@@ -855,10 +855,7 @@ async function handleFirstTryFailure(interaction, messageId) {
     resetTeamProgress(state, team.id);
     await message.edit(buildChallengeMessage(state));
     store.saveChallenge(state);
-    await replyTemporary(interaction, {
-        content: `${team.name} startet wieder bei Aufgabe 1.`,
-        ephemeral: true,
-    });
+    await acknowledgeQuietly(interaction);
 }
 
 async function handleVoteButton(interaction, messageId, choice) {
@@ -928,27 +925,6 @@ async function createTemporaryVoiceChannels(channel, state) {
                 name: `Win Challenge - ${team.name}`,
                 type: ChannelType.GuildVoice,
                 parent: channel.parentId || undefined,
-                permissionOverwrites: [
-                    {
-                        id: channel.guild.roles.everyone.id,
-                        deny: [PermissionFlagsBits.ViewChannel],
-                    },
-                    {
-                        id: client.user.id,
-                        allow: [
-                            PermissionFlagsBits.ViewChannel,
-                            PermissionFlagsBits.ManageChannels,
-                        ],
-                    },
-                    ...team.userIds.map((userId) => ({
-                        id: userId,
-                        allow: [
-                            PermissionFlagsBits.ViewChannel,
-                            PermissionFlagsBits.Connect,
-                            PermissionFlagsBits.Speak,
-                        ],
-                    })),
-                ],
                 reason: `Temporärer Sprachkanal für ${team.name}`,
             });
 
